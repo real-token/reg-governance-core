@@ -1,0 +1,29 @@
+{
+  "name": "reg-governance-core",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "coverage": "npx hardhat coverage",
+    "size": "npm run compile && npx hardhat size-contracts"
+  },
+  "author": "RealT Inc.",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.2",
+    "@openzeppelin/contracts": "^5.0.2",
+    "@openzeppelin/contracts-upgradeable": "^5.0.2",
+    "@openzeppelin/hardhat-upgrades": "^1.22.1",
+    "dotenv": "^16.4.5",
+    "ethers": "^5.7.2",
+    "hardhat": "^2.13.0",
+    "hardhat-contract-sizer": "^2.10.0",
+    "hardhat-dependency-compiler": "^1.1.3",
+    "hardhat-deploy": "^0.11.25"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^5.0.2"
+  }
+}
