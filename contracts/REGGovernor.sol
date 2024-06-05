@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
-// Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity ^0.8.0;
 
+import "./interfaces/IREGGovernor.sol";
+import "./interfaces/IREGIncentiveVault.sol";
+import "./libraries/REGGovernorErrors.sol";
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettingsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorCountingSimpleUpgradeable.sol";
@@ -21,10 +23,17 @@ contract REGGovernor is
     GovernorVotesQuorumFractionUpgradeable,
     GovernorTimelockControlUpgradeable,
     AccessControlUpgradeable,
-    UUPSUpgradeable
+    UUPSUpgradeable,
+    IREGGovernor
 {
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
     bytes32 public constant PROPOSER_ROLE = keccak256("PROPOSER_ROLE");
+
+    ProposerMode private _proposerMode;
+
+    bool private _incentiveEnabled;
+
+    IREGIncentiveVault private _regIncentiveVault;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -181,9 +190,77 @@ contract REGGovernor is
     )
         public
         view
-        override(GovernorUpgradeable, AccessControlUpgradeable)
+        override(AccessControlUpgradeable, GovernorUpgradeable)
         returns (bool)
     {
         return supportsInterface(interfaceId);
+    }
+
+    function setProposerMode(
+        ProposerMode proposerMode
+    ) external override onlyGovernance {
+        emit ProposerModeUpdated(proposerMode);
+        _proposerMode = ProposerMode(proposerMode);
+    }
+
+    function getProposerMode() external view override returns (ProposerMode) {
+        return _proposerMode;
+    }
+
+    function propose(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) public override returns (uint256) {
+        bool proposerHasVotes = getVotes(msg.sender, block.number - 1) >=
+            proposalThreshold();
+        bool proposerHasRole = hasRole(PROPOSER_ROLE, msg.sender);
+
+        if (_proposerMode == ProposerMode.ProposerWithRoleAndVotingPower) {
+            if (!proposerHasVotes || !proposerHasRole)
+                revert REGGovernorErrors.ProposerWithoutVotesOrRole();
+        } else if (_proposerMode == ProposerMode.ProposerWithRole) {
+            if (!proposerHasRole)
+                revert REGGovernorErrors.ProposerWithoutRole();
+        } else if (_proposerMode == ProposerMode.ProposerWithVotingPower) {
+            if (!proposerHasVotes)
+                revert REGGovernorErrors.ProposerWithoutVotes();
+        } else {
+            revert REGGovernorErrors.InvalidProposerMode();
+        }
+
+        return super.propose(targets, values, calldatas, description);
+    }
+
+    function setRegIncentiveVault(
+        IREGIncentiveVault regIncentiveVault
+    ) external override onlyGovernance {
+        _regIncentiveVault = IREGIncentiveVault(regIncentiveVault);
+    }
+
+    function getRegIncentiveVault()
+        external
+        view
+        override
+        returns (IREGIncentiveVault)
+    {
+        return _regIncentiveVault;
+    }
+
+    function _castVote(
+        uint256 proposalId,
+        address account,
+        uint8 support,
+        string memory reason,
+        bytes memory params
+    ) internal override returns (uint256) {
+        if (_incentiveEnabled) {
+            IREGIncentiveVault(_regIncentiveVault).recordVote(
+                account,
+                proposalId
+            );
+        }
+        return super._castVote(proposalId, account, support, reason, params);
     }
 }
