@@ -83,18 +83,30 @@ contract REGVotesRegistry is
 
     function registerVotingPower(
         VotingPower[] calldata votingPower
-    ) public onlyRole(MINTER_ROLE) {
+    ) external override onlyRole(MINTER_ROLE) {
         uint256 length = votingPower.length;
         for (uint256 i = 0; i < length; ) {
-            VotingPower memory vp = votingPower[i];
-            uint256 oldBalance = balanceOf(vp.voter);
-            if (vp.votes > oldBalance) {
-                _mint(vp.voter, vp.votes - balanceOf(vp.voter));
-            } else if (vp.votes < oldBalance) {
-                _burn(vp.voter, oldBalance - vp.votes);
+            address voter = votingPower[i].voter;
+            uint256 votes = votingPower[i].votes;
+            uint256 oldBalance = balanceOf(voter);
+
+            // Set delegatee to voter if it is not already set
+            address delegatee = delegates(voter);
+            if (delegatee != voter) {
+                _delegate(voter, voter);
+            }
+
+            // Update the balance of the voter if it has changed
+            if (votes > oldBalance) {
+                _mint(voter, votes - balanceOf(voter));
+            } else if (votes < oldBalance) {
+                _burn(voter, oldBalance - votes);
             } else {
                 // No need to mint or burn
             }
+
+            emit RegisterVotingPower(voter, votes);
+
             unchecked {
                 ++i;
             }
@@ -130,5 +142,19 @@ contract REGVotesRegistry is
         uint256 amount
     ) public override returns (bool) {
         return false;
+    }
+
+    /**
+     * @dev Users can not delegate.
+     **/
+    function _delegate(
+        address account,
+        address delegatee
+    ) internal virtual override {
+        if (delegatee != account) {
+            revert REGVotesRegistryErrors.DelegateToOtherNotAllowed();
+        }
+
+        super._delegate(account, delegatee);
     }
 }

@@ -14,15 +14,23 @@ interface IREGGovernor {
         ProposerWithRoleAndVotingPower
     }
 
-    event ProposerModeUpdated(ProposerMode proposerMode);
+    event SetProposerMode(ProposerMode proposerMode);
+
+    event SetIncentiveEnabled(bool status);
+
+    event SetRegIncentiveVault(IREGIncentiveVault regIncentiveVault);
 
     function setProposerMode(ProposerMode proposerMode) external;
 
-    function getProposerMode() external view returns (ProposerMode);
+    function setIncentiveEnabled(bool status) external;
 
     function setRegIncentiveVault(
         IREGIncentiveVault regIncentiveVault
     ) external;
+
+    function getProposerMode() external view returns (ProposerMode);
+
+    function getIncentiveEnabled() external view returns (bool);
 
     function getRegIncentiveVault() external view returns (IREGIncentiveVault);
 }

@@ -61,8 +61,97 @@ contract REGGovernor is
         address newImplementation
     ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
+    /// @inheritdoc IREGGovernor
+    function setProposerMode(
+        ProposerMode proposerMode
+    ) external override onlyGovernance {
+        emit SetProposerMode(proposerMode);
+        _proposerMode = ProposerMode(proposerMode);
+    }
+
+    /// @inheritdoc IREGGovernor
+    function setIncentiveEnabled(bool status) external override onlyGovernance {
+        emit SetIncentiveEnabled(status);
+        _incentiveEnabled = status;
+    }
+
+    /// @inheritdoc IREGGovernor
+    function setRegIncentiveVault(
+        IREGIncentiveVault regIncentiveVault
+    ) external override onlyGovernance {
+        emit SetRegIncentiveVault(regIncentiveVault);
+        _regIncentiveVault = IREGIncentiveVault(regIncentiveVault);
+    }
+
+    /// @inheritdoc IREGGovernor
+    function getProposerMode() external view override returns (ProposerMode) {
+        return _proposerMode;
+    }
+
+    /// @inheritdoc IREGGovernor
+    function getIncentiveEnabled() external view override returns (bool) {
+        return _incentiveEnabled;
+    }
+
+    /// @inheritdoc IREGGovernor
+    function getRegIncentiveVault()
+        external
+        view
+        override
+        returns (IREGIncentiveVault)
+    {
+        return _regIncentiveVault;
+    }
+
     // The following functions are overrides required by Solidity.
 
+    /**
+     * @dev Verify if the proposer has the required votes and role to propose according to the proposer mode.
+     **/
+    function propose(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) public override returns (uint256) {
+        bool proposerHasVotes = getVotes(msg.sender, block.number - 1) >=
+            proposalThreshold();
+        bool proposerHasRole = hasRole(PROPOSER_ROLE, msg.sender);
+
+        if (_proposerMode == ProposerMode.ProposerWithRoleAndVotingPower) {
+            if (!proposerHasVotes || !proposerHasRole)
+                revert REGGovernorErrors.ProposerWithoutVotesOrRole();
+        } else if (_proposerMode == ProposerMode.ProposerWithRole) {
+            if (!proposerHasRole)
+                revert REGGovernorErrors.ProposerWithoutRole();
+        } else if (_proposerMode == ProposerMode.ProposerWithVotingPower) {
+            if (!proposerHasVotes)
+                revert REGGovernorErrors.ProposerWithoutVotes();
+        } else {
+            revert REGGovernorErrors.InvalidProposerMode();
+        }
+
+        return super.propose(targets, values, calldatas, description);
+    }
+
+    /**
+     * @dev If the incentive is enabled, record the vote in the incentive vault.
+     **/
+    function _castVote(
+        uint256 proposalId,
+        address account,
+        uint8 support,
+        string memory reason,
+        bytes memory params
+    ) internal override returns (uint256) {
+        if (_incentiveEnabled) {
+            _regIncentiveVault.recordVote(account, proposalId);
+        }
+
+        return super._castVote(proposalId, account, support, reason, params);
+    }
+
+    // The following functions from parent contracts are overrides required by Solidity.
     function votingDelay()
         public
         view
@@ -194,73 +283,5 @@ contract REGGovernor is
         returns (bool)
     {
         return supportsInterface(interfaceId);
-    }
-
-    function setProposerMode(
-        ProposerMode proposerMode
-    ) external override onlyGovernance {
-        emit ProposerModeUpdated(proposerMode);
-        _proposerMode = ProposerMode(proposerMode);
-    }
-
-    function getProposerMode() external view override returns (ProposerMode) {
-        return _proposerMode;
-    }
-
-    function propose(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        string memory description
-    ) public override returns (uint256) {
-        bool proposerHasVotes = getVotes(msg.sender, block.number - 1) >=
-            proposalThreshold();
-        bool proposerHasRole = hasRole(PROPOSER_ROLE, msg.sender);
-
-        if (_proposerMode == ProposerMode.ProposerWithRoleAndVotingPower) {
-            if (!proposerHasVotes || !proposerHasRole)
-                revert REGGovernorErrors.ProposerWithoutVotesOrRole();
-        } else if (_proposerMode == ProposerMode.ProposerWithRole) {
-            if (!proposerHasRole)
-                revert REGGovernorErrors.ProposerWithoutRole();
-        } else if (_proposerMode == ProposerMode.ProposerWithVotingPower) {
-            if (!proposerHasVotes)
-                revert REGGovernorErrors.ProposerWithoutVotes();
-        } else {
-            revert REGGovernorErrors.InvalidProposerMode();
-        }
-
-        return super.propose(targets, values, calldatas, description);
-    }
-
-    function setRegIncentiveVault(
-        IREGIncentiveVault regIncentiveVault
-    ) external override onlyGovernance {
-        _regIncentiveVault = IREGIncentiveVault(regIncentiveVault);
-    }
-
-    function getRegIncentiveVault()
-        external
-        view
-        override
-        returns (IREGIncentiveVault)
-    {
-        return _regIncentiveVault;
-    }
-
-    function _castVote(
-        uint256 proposalId,
-        address account,
-        uint8 support,
-        string memory reason,
-        bytes memory params
-    ) internal override returns (uint256) {
-        if (_incentiveEnabled) {
-            IREGIncentiveVault(_regIncentiveVault).recordVote(
-                account,
-                proposalId
-            );
-        }
-        return super._castVote(proposalId, account, support, reason, params);
     }
 }
