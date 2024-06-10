@@ -19,7 +19,7 @@ contract REGVotesRegistry is
     UUPSUpgradeable,
     IREGVotesRegistry
 {
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant REGISTER_ROLE = keccak256("REGISTER_ROLE");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -29,7 +29,7 @@ contract REGVotesRegistry is
 
     function initialize(
         address defaultAdmin,
-        address minter,
+        address register,
         address upgrader
     ) public initializer {
         __ERC20_init("REGVotesRegistry", "REGVotesRegistry");
@@ -39,51 +39,25 @@ contract REGVotesRegistry is
         __UUPSUpgradeable_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
-        _grantRole(MINTER_ROLE, minter);
+        _grantRole(REGISTER_ROLE, register);
         _grantRole(UPGRADER_ROLE, upgrader);
     }
 
-    function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
-        _mint(to, amount);
-    }
-
-    function clock() public view override returns (uint48) {
-        return uint48(block.timestamp);
-    }
-
-    // solhint-disable-next-line func-name-mixedcase
-    function CLOCK_MODE() public pure override returns (string memory) {
-        return "mode=timestamp";
-    }
-
+    /**
+     * @notice The admin (with upgrader role) uses this function to update the contract
+     * @dev This function is always needed in future implementation contract versions, otherwise, the contract will not be upgradeable
+     * @param newImplementation is the address of the new implementation contract
+     **/
     function _authorizeUpgrade(
         address newImplementation
-    ) internal override onlyRole(UPGRADER_ROLE) {}
-
-    // The following functions are overrides required by Solidity.
-
-    function _update(
-        address from,
-        address to,
-        uint256 value
-    ) internal override(ERC20Upgradeable, ERC20VotesUpgradeable) {
-        super._update(from, to, value);
+    ) internal override onlyRole(UPGRADER_ROLE) {
+        // Intentionally left blank
     }
 
-    function nonces(
-        address owner
-    )
-        public
-        view
-        override(ERC20PermitUpgradeable, NoncesUpgradeable)
-        returns (uint256)
-    {
-        return super.nonces(owner);
-    }
-
+    /// @inheritdoc IREGVotesRegistry
     function registerVotingPower(
         VotingPower[] calldata votingPower
-    ) external override onlyRole(MINTER_ROLE) {
+    ) external override onlyRole(REGISTER_ROLE) {
         uint256 length = votingPower.length;
         for (uint256 i = 0; i < length; ) {
             address voter = votingPower[i].voter;
@@ -111,6 +85,42 @@ contract REGVotesRegistry is
                 ++i;
             }
         }
+    }
+
+    /**
+     * @dev Override clock function to use timestamp as the clock mode.
+     **/
+    function clock() public view override returns (uint48) {
+        return uint48(block.timestamp);
+    }
+
+    /**
+     * @dev Override CLOCK_MODE function to use timestamp as the clock mode.
+     **/
+    // solhint-disable-next-line func-name-mixedcase
+    function CLOCK_MODE() public pure override returns (string memory) {
+        return "mode=timestamp";
+    }
+
+    // The following functions are overrides required by Solidity.
+
+    function _update(
+        address from,
+        address to,
+        uint256 value
+    ) internal override(ERC20Upgradeable, ERC20VotesUpgradeable) {
+        super._update(from, to, value);
+    }
+
+    function nonces(
+        address owner
+    )
+        public
+        view
+        override(ERC20PermitUpgradeable, NoncesUpgradeable)
+        returns (uint256)
+    {
+        return super.nonces(owner);
     }
 
     /**
