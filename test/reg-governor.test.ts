@@ -4,16 +4,16 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { ZERO_ADDRESS } from "../helpers/constants";
 import {
   REGGovernor,
-  REGVotesRegistry,
-  REGTimelockController,
+  REGVotingPowerRegistry,
+  REGTreasuryDAO,
   REGTokenMock,
   VotingPowerStruct,
 } from "../typechain-types";
 
 describe("REGGovernor contract", function () {
   let regGovernor: REGGovernor;
-  let regVotesRegistry: REGVotesRegistry;
-  let regTimelockController: REGTimelockController;
+  let regVotingPowerRegistry: REGVotingPowerRegistry;
+  let regTreasuryDAO: REGTreasuryDAO;
   let regTokenMock: REGTokenMock;
   let deployer: any;
   let admin: any;
@@ -33,11 +33,11 @@ describe("REGGovernor contract", function () {
     console.log("executor", executor.address);
     console.log("register", register.address);
 
-    const REGVotesRegistryFactory = await ethers.getContractFactory(
-      "REGVotesRegistry"
+    const REGVotingPowerRegistryFactory = await ethers.getContractFactory(
+      "REGVotingPowerRegistry"
     );
-    regVotesRegistry = (await upgrades.deployProxy(
-      REGVotesRegistryFactory,
+    regVotingPowerRegistry = (await upgrades.deployProxy(
+      REGVotingPowerRegistryFactory,
       [
         admin.address, // default admin
         register.address, // register role
@@ -46,13 +46,13 @@ describe("REGGovernor contract", function () {
       {
         initializer: "initialize",
       }
-    )) as REGVotesRegistry;
+    )) as REGVotingPowerRegistry;
 
-    const REGTimelockControllerFactory = await ethers.getContractFactory(
-      "REGTimelockController"
+    const REGTreasuryDAOFactory = await ethers.getContractFactory(
+      "REGTreasuryDAO"
     );
-    regTimelockController = (await upgrades.deployProxy(
-      REGTimelockControllerFactory,
+    regTreasuryDAO = (await upgrades.deployProxy(
+      REGTreasuryDAOFactory,
       [
         1,
         [proposer.address], // should be granted later to governor contract
@@ -62,14 +62,14 @@ describe("REGGovernor contract", function () {
       {
         initializer: "initialize",
       }
-    )) as REGTimelockController;
+    )) as REGTreasuryDAO;
 
     const REGGovernorFactory = await ethers.getContractFactory("REGGovernor");
     regGovernor = (await upgrades.deployProxy(
       REGGovernorFactory,
       [
-        regVotesRegistry.address, // ERC20Votes
-        regTimelockController.address, // TimelockController
+        regVotingPowerRegistry.address, // ERC20Votes
+        regTreasuryDAO.address, // TimelockController
         admin.address, // default admin
       ],
       {
@@ -77,18 +77,12 @@ describe("REGGovernor contract", function () {
       }
     )) as REGGovernor;
 
-    await regTimelockController
+    await regTreasuryDAO
       .connect(admin)
-      .grantRole(
-        await regTimelockController.EXECUTOR_ROLE(),
-        regGovernor.address
-      );
-    await regTimelockController
+      .grantRole(await regTreasuryDAO.EXECUTOR_ROLE(), regGovernor.address);
+    await regTreasuryDAO
       .connect(admin)
-      .grantRole(
-        await regTimelockController.PROPOSER_ROLE(),
-        regGovernor.address
-      );
+      .grantRole(await regTreasuryDAO.PROPOSER_ROLE(), regGovernor.address);
 
     const REGTokenMock = await ethers.getContractFactory("REGTokenMock");
     regTokenMock = (await REGTokenMock.deploy(admin.address)) as REGTokenMock;
@@ -106,13 +100,12 @@ describe("REGGovernor contract", function () {
     // Transfer 10k tokens to TimeLockController
     await regTokenMock
       .connect(admin)
-      .transfer(
-        regTimelockController.address,
-        ethers.utils.parseEther("10000")
-      );
+      .transfer(regTreasuryDAO.address, ethers.utils.parseEther("10000"));
 
     // Register voters
-    await regVotesRegistry.connect(register).registerVotingPower(votingStruct2);
+    await regVotingPowerRegistry
+      .connect(register)
+      .registerVotingPower(votingStruct2);
 
     // Propose to transfer 1k tokens to team
     const tokenAddress = regTokenMock.address;
@@ -180,7 +173,7 @@ describe("REGGovernor contract", function () {
     );
 
     // Increase time to cover voting period
-    const minDelay = await regTimelockController.getMinDelay();
+    const minDelay = await regTreasuryDAO.getMinDelay();
     await time.increase(minDelay);
     console.log("minDelay", minDelay.toString());
     console.log("queue end: ", (await time.latest()).toString());
@@ -217,10 +210,10 @@ describe("REGGovernor contract", function () {
 });
 
 // it("should create and queue a proposal", async function () {
-//   const targets = [regVotesRegistry.address];
+//   const targets = [regVotingPowerRegistry.address];
 //   const values = [0];
 //   const calldatas = [
-//     regVotesRegistry.interface.encodeFunctionData("mint", [
+//     regVotingPowerRegistry.interface.encodeFunctionData("mint", [
 //       voter.address,
 //       ethers.utils.parseEther("50"),
 //     ]),
@@ -246,10 +239,10 @@ describe("REGGovernor contract", function () {
 // });
 
 // it("should execute a proposal through TimelockController", async function () {
-//   const targets = [regVotesRegistry.address];
+//   const targets = [regVotingPowerRegistry.address];
 //   const values = [0];
 //   const calldatas = [
-//     regVotesRegistry.interface.encodeFunctionData("mint", [
+//     regVotingPowerRegistry.interface.encodeFunctionData("mint", [
 //       voter.address,
 //       ethers.utils.parseEther("50"),
 //     ]),
@@ -268,16 +261,16 @@ describe("REGGovernor contract", function () {
 //     .connect(proposer)
 //     .execute(targets, values, calldatas, ethers.utils.id(description));
 
-//   expect(await regVotesRegistry.balanceOf(voter.address)).to.equal(
+//   expect(await regVotingPowerRegistry.balanceOf(voter.address)).to.equal(
 //     ethers.utils.parseEther("150")
 //   );
 // });
 
 // it("should revert on invalid proposal execution attempts", async function () {
-//   const targets = [regVotesRegistry.address];
+//   const targets = [regVotingPowerRegistry.address];
 //   const values = [0];
 //   const calldatas = [
-//     regVotesRegistry.interface.encodeFunctionData("mint", [
+//     regVotingPowerRegistry.interface.encodeFunctionData("mint", [
 //       voter.address,
 //       ethers.utils.parseEther("50"),
 //     ]),

@@ -3,15 +3,15 @@ import { ethers, upgrades } from "hardhat";
 import { ZERO_ADDRESS } from "../helpers/constants";
 import {
   REGGovernor,
-  REGVotesRegistry,
-  REGTimelockController,
+  REGVotingPowerRegistry,
+  REGTreasuryDAO,
   REGTokenMock,
 } from "../typechain-types";
 
-describe("REGTimelockController contract", function () {
+describe("REGTreasuryDAO contract", function () {
   let regGovernor: REGGovernor;
-  let regVotesRegistry: REGVotesRegistry;
-  let regTimelockController: REGTimelockController;
+  let regVotingPowerRegistry: REGVotingPowerRegistry;
+  let regTreasuryDAO: REGTreasuryDAO;
   let regTokenMock: REGTokenMock;
   let deployer: any;
   let admin: any;
@@ -29,11 +29,11 @@ describe("REGTimelockController contract", function () {
     console.log("executor", executor.address);
     console.log("register", register.address);
 
-    const REGVotesRegistryFactory = await ethers.getContractFactory(
-      "REGVotesRegistry"
+    const REGVotingPowerRegistryFactory = await ethers.getContractFactory(
+      "REGVotingPowerRegistry"
     );
-    regVotesRegistry = (await upgrades.deployProxy(
-      REGVotesRegistryFactory,
+    regVotingPowerRegistry = (await upgrades.deployProxy(
+      REGVotingPowerRegistryFactory,
       [
         admin.address, // default admin
         register.address, // register role
@@ -42,13 +42,13 @@ describe("REGTimelockController contract", function () {
       {
         initializer: "initialize",
       }
-    )) as REGVotesRegistry;
+    )) as REGVotingPowerRegistry;
 
-    const REGTimelockControllerFactory = await ethers.getContractFactory(
-      "REGTimelockController"
+    const REGTreasuryDAOFactory = await ethers.getContractFactory(
+      "REGTreasuryDAO"
     );
-    regTimelockController = (await upgrades.deployProxy(
-      REGTimelockControllerFactory,
+    regTreasuryDAO = (await upgrades.deployProxy(
+      REGTreasuryDAOFactory,
       [
         1,
         [proposer.address], // should be granted later to governor contract
@@ -58,14 +58,14 @@ describe("REGTimelockController contract", function () {
       {
         initializer: "initialize",
       }
-    )) as REGTimelockController;
+    )) as REGTreasuryDAO;
 
     const REGGovernorFactory = await ethers.getContractFactory("REGGovernor");
     regGovernor = (await upgrades.deployProxy(
       REGGovernorFactory,
       [
-        regVotesRegistry.address, // ERC20Votes
-        regTimelockController.address, // TimelockController
+        regVotingPowerRegistry.address, // ERC20Votes
+        regTreasuryDAO.address, // TimelockController
         admin.address, // default admin
       ],
       {
@@ -73,18 +73,12 @@ describe("REGTimelockController contract", function () {
       }
     )) as REGGovernor;
 
-    await regTimelockController
+    await regTreasuryDAO
       .connect(admin)
-      .grantRole(
-        await regTimelockController.EXECUTOR_ROLE(),
-        regGovernor.address
-      );
-    await regTimelockController
+      .grantRole(await regTreasuryDAO.EXECUTOR_ROLE(), regGovernor.address);
+    await regTreasuryDAO
       .connect(admin)
-      .grantRole(
-        await regTimelockController.PROPOSER_ROLE(),
-        regGovernor.address
-      );
+      .grantRole(await regTreasuryDAO.PROPOSER_ROLE(), regGovernor.address);
 
     const REGTokenMock = await ethers.getContractFactory("REGTokenMock");
     regTokenMock = (await REGTokenMock.deploy(admin.address)) as REGTokenMock;
@@ -93,14 +87,14 @@ describe("REGTimelockController contract", function () {
 
   it("should initialize the right proposer and executor", async function () {
     expect(
-      await regTimelockController.hasRole(
-        await regTimelockController.PROPOSER_ROLE(),
+      await regTreasuryDAO.hasRole(
+        await regTreasuryDAO.PROPOSER_ROLE(),
         proposer.address
       )
     ).to.be.true;
     expect(
-      await regTimelockController.hasRole(
-        await regTimelockController.EXECUTOR_ROLE(),
+      await regTreasuryDAO.hasRole(
+        await regTreasuryDAO.EXECUTOR_ROLE(),
         executor.address
       )
     ).to.be.true;
@@ -108,39 +102,32 @@ describe("REGTimelockController contract", function () {
 
   it("should revert on re-calling initialize", async function () {
     await expect(
-      regTimelockController
+      regTreasuryDAO
         .connect(admin)
         .initialize(0, [proposer.address], [executor.address], admin.address)
-    ).to.be.revertedWithCustomError(
-      regTimelockController,
-      "InvalidInitialization"
-    );
+    ).to.be.revertedWithCustomError(regTreasuryDAO, "InvalidInitialization");
   });
 
   it("should revert on upgrade by non-upgrader", async function () {
     await expect(
-      regTimelockController
-        .connect(deployer)
-        .upgradeToAndCall(ZERO_ADDRESS, "0x")
+      regTreasuryDAO.connect(deployer).upgradeToAndCall(ZERO_ADDRESS, "0x")
     ).to.be.revertedWithCustomError(
-      regTimelockController,
+      regTreasuryDAO,
       "AccessControlUnauthorizedAccount"
     );
   });
 
   it("should be able to upgrade by upgrader", async function () {
-    const REGTimelockControllerV2 = await ethers.getContractFactory(
-      "REGTimelockController"
-    );
+    const REGTreasuryDAOV2 = await ethers.getContractFactory("REGTreasuryDAO");
 
-    const regTimelockControllerV2 = await REGTimelockControllerV2.deploy();
+    const regTreasuryDAOV2 = await REGTreasuryDAOV2.deploy();
 
-    await regTimelockControllerV2.deployed();
+    await regTreasuryDAOV2.deployed();
 
     await expect(
-      regTimelockController
+      regTreasuryDAO
         .connect(admin)
-        .upgradeToAndCall(regTimelockControllerV2.address, "0x")
-    ).to.emit(regTimelockController, "Upgraded");
+        .upgradeToAndCall(regTreasuryDAOV2.address, "0x")
+    ).to.emit(regTreasuryDAO, "Upgraded");
   });
 });

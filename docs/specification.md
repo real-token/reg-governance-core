@@ -18,7 +18,7 @@ Below are specifications of 3 contracts (Governor, VotesRegistry, TimelockContro
 | Record vote to REGIncentiveVault                                                                | OK (recordVote)                                            |
 | Able to change REG token address???                                                             | OK (Need to go through un upgrade of Governor contract)    |
 
-## REGVotesRegistry (ERC20Votes):
+## REGVotingPowerRegistry (ERC20Votes):
 
 | Requirements                                     | Status                                                 |
 | ------------------------------------------------ | ------------------------------------------------------ |
@@ -56,9 +56,9 @@ Below are specifications of 3 contracts (Governor, VotesRegistry, TimelockContro
 
 How to update parameters:
 
-- votingDelay: 1 days
-- votingPeriod: 7 days
-- proposalThreshold: 100 or 2500 voting power
+- votingDelay: 15 minutes
+- votingPeriod: 1 heure
+- proposalThreshold: 200 voting power
 - quorumNumerator (usually 4)
 - quorumDenominator (default 100, only round percentage like 1%, 2%, 3%, 4%,..., can override)
 - IVotes token address???

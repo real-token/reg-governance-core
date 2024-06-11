@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./interfaces/IREGVotesRegistry.sol";
-import "./libraries/REGVotesRegistryErrors.sol";
+import "./interfaces/IREGVotingPowerRegistry.sol";
+import "./libraries/REGVotingPowerRegistryErrors.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
@@ -10,14 +10,14 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpg
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract REGVotesRegistry is
+contract REGVotingPowerRegistry is
     Initializable,
     ERC20Upgradeable,
     AccessControlUpgradeable,
     ERC20PermitUpgradeable,
     ERC20VotesUpgradeable,
     UUPSUpgradeable,
-    IREGVotesRegistry
+    IREGVotingPowerRegistry
 {
     bytes32 public constant REGISTER_ROLE = keccak256("REGISTER_ROLE");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
@@ -32,9 +32,9 @@ contract REGVotesRegistry is
         address register,
         address upgrader
     ) public initializer {
-        __ERC20_init("REGVotesRegistry", "REGVotesRegistry");
+        __ERC20_init("REG Voting Power Registry", "REG-VOTING-POWER");
         __AccessControl_init();
-        __ERC20Permit_init("REGVotesRegistry");
+        __ERC20Permit_init("REG Voting Power Registry");
         __ERC20Votes_init();
         __UUPSUpgradeable_init();
 
@@ -54,7 +54,7 @@ contract REGVotesRegistry is
         // Intentionally left blank
     }
 
-    /// @inheritdoc IREGVotesRegistry
+    /// @inheritdoc IREGVotingPowerRegistry
     function registerVotingPower(
         VotingPower[] calldata votingPower
     ) external override onlyRole(REGISTER_ROLE) {
@@ -162,7 +162,7 @@ contract REGVotesRegistry is
         address delegatee
     ) internal virtual override {
         if (delegatee != account) {
-            revert REGVotesRegistryErrors.DelegateToOtherNotAllowed();
+            revert REGVotingPowerRegistryErrors.DelegateToOtherNotAllowed();
         }
 
         super._delegate(account, delegatee);

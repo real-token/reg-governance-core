@@ -2,10 +2,10 @@
 pragma solidity ^0.8.0;
 
 /**
- * @title Interface for REGVotesRegistry
+ * @title Interface for REGVotingPowerRegistry
  */
 
-interface IREGVotesRegistry {
+interface IREGVotingPowerRegistry {
     struct VotingPower {
         address voter;
         uint256 votes;

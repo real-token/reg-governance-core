@@ -19,7 +19,7 @@
 | setIncentiveEnabled/setRegIncentiveVault                                                               | DEFAULT_ADMIN_ROLE        |
 | grantRole/revokeRole/renounceRole                                                                      | DEFAULT_ADMIN_ROLE        |
 
-## REGVotesRegistry:
+## REGVotingPowerRegistry:
 
 | Function                          | Access control                             |
 | --------------------------------- | ------------------------------------------ |
@@ -45,7 +45,7 @@
 
 # Proposal flows:
 
-- REGVotesRegistry.registerVotingPower()
+- REGVotingPowerRegistry.registerVotingPower()
 - REGGovernor.propose()
 - REGGovernor.castVote()
 - REGGovernor.queue() (=> Timelock.scheduleBatch())
