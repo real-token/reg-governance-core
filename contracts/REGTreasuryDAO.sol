@@ -29,7 +29,14 @@ contract REGTreasuryDAO is
         _grantRole(UPGRADER_ROLE, admin);
     }
 
+    /**
+     * @notice The admin (with upgrader role) uses this function to update the contract
+     * @dev This function is always needed in future implementation contract versions, otherwise, the contract will not be upgradeable
+     * @param newImplementation is the address of the new implementation contract
+     **/
     function _authorizeUpgrade(
         address newImplementation
-    ) internal override onlyRole(UPGRADER_ROLE) {}
+    ) internal override onlyRole(UPGRADER_ROLE) {
+        // Intentionally left blank
+    }
 }

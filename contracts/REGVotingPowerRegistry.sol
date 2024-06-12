@@ -102,8 +102,6 @@ contract REGVotingPowerRegistry is
         return "mode=timestamp";
     }
 
-    // The following functions are overrides required by Solidity.
-
     function _update(
         address from,
         address to,

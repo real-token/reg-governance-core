@@ -11,7 +11,8 @@ interface IREGGovernor {
     enum ProposerMode {
         ProposerWithRole,
         ProposerWithVotingPower,
-        ProposerWithRoleAndVotingPower
+        ProposerWithRoleAndVotingPower,
+        ProposerWithRoleOrVotingPower
     }
 
     event SetProposerMode(ProposerMode proposerMode);
@@ -33,4 +34,11 @@ interface IREGGovernor {
     function getIncentiveEnabled() external view returns (bool);
 
     function getRegIncentiveVault() external view returns (IREGIncentiveVault);
+
+    function cancelByAdmin(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external returns (uint256);
 }

@@ -28,6 +28,7 @@ contract REGGovernor is
 {
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
     bytes32 public constant PROPOSER_ROLE = keccak256("PROPOSER_ROLE");
+    bytes32 public constant CANCELLER_ROLE = keccak256("CANCELLER_ROLE");
 
     ProposerMode private _proposerMode;
 
@@ -46,7 +47,7 @@ contract REGGovernor is
         address defaultAdmin
     ) public initializer {
         __Governor_init("REGGovernor");
-        __GovernorSettings_init(1 days, 1 weeks, 2500e18);
+        __GovernorSettings_init(15 minutes, 1 hours, 200e18);
         __GovernorCountingSimple_init();
         __GovernorVotes_init(_token);
         __GovernorVotesQuorumFraction_init(4);
@@ -55,11 +56,19 @@ contract REGGovernor is
         __UUPSUpgradeable_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
+        _grantRole(UPGRADER_ROLE, defaultAdmin);
     }
 
+    /**
+     * @notice The admin (with upgrader role) uses this function to update the contract
+     * @dev This function is always needed in future implementation contract versions, otherwise, the contract will not be upgradeable
+     * @param newImplementation is the address of the new implementation contract
+     **/
     function _authorizeUpgrade(
         address newImplementation
-    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+    ) internal override onlyRole(UPGRADER_ROLE) {
+        // Intentionally left blank
+    }
 
     /// @inheritdoc IREGGovernor
     function setProposerMode(
@@ -103,7 +112,15 @@ contract REGGovernor is
         return _regIncentiveVault;
     }
 
-    // The following functions are overrides required by Solidity.
+    /// @inheritdoc IREGGovernor
+    function cancelByAdmin(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external override onlyRole(CANCELLER_ROLE) returns (uint256) {
+        return _cancel(targets, values, calldatas, descriptionHash);
+    }
 
     /**
      * @dev Verify if the proposer has the required votes and role to propose according to the proposer mode.
@@ -118,15 +135,23 @@ contract REGGovernor is
             proposalThreshold();
         bool proposerHasRole = hasRole(PROPOSER_ROLE, msg.sender);
 
-        if (_proposerMode == ProposerMode.ProposerWithRoleAndVotingPower) {
-            if (!proposerHasVotes || !proposerHasRole)
-                revert REGGovernorErrors.ProposerWithoutVotesOrRole();
-        } else if (_proposerMode == ProposerMode.ProposerWithRole) {
+        if (_proposerMode == ProposerMode.ProposerWithRole) {
             if (!proposerHasRole)
-                revert REGGovernorErrors.ProposerWithoutRole();
+                revert REGGovernorErrors.InvalidProposerWithRole();
         } else if (_proposerMode == ProposerMode.ProposerWithVotingPower) {
             if (!proposerHasVotes)
-                revert REGGovernorErrors.ProposerWithoutVotes();
+                revert REGGovernorErrors.InvalidProposerWithVotingPower();
+        } else if (
+            _proposerMode == ProposerMode.ProposerWithRoleAndVotingPower
+        ) {
+            if (!proposerHasVotes || !proposerHasRole)
+                revert REGGovernorErrors
+                    .InvalidProposerWithRoleAndVotingPower();
+        } else if (
+            _proposerMode == ProposerMode.ProposerWithRoleOrVotingPower
+        ) {
+            if (!proposerHasVotes && !proposerHasRole)
+                revert REGGovernorErrors.InvalidProposerWithRoleOrVotingPower();
         } else {
             revert REGGovernorErrors.InvalidProposerMode();
         }
@@ -151,7 +176,6 @@ contract REGGovernor is
         return super._castVote(proposalId, account, support, reason, params);
     }
 
-    // The following functions from parent contracts are overrides required by Solidity.
     function votingDelay()
         public
         view
