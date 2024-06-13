@@ -7,7 +7,10 @@
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",
     "coverage": "npx hardhat coverage",
-    "size": "npm run compile && npx hardhat size-contracts"
+    "size": "npm run compile && npx hardhat size-contracts",
+    "deploy:governor:sepolia": "npx hardhat run scripts/deploy_reg_governor.ts --network sepolia",
+    "deploy:timelock:sepolia": "npx hardhat run scripts/deploy_reg_treasury_dao.ts --network sepolia",
+    "deploy:voting:sepolia": "npx hardhat run scripts/deploy_reg_voting_power.ts --network sepolia"
   },
   "author": "RealT Inc.",
   "license": "MIT",
