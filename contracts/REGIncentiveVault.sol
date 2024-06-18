@@ -24,9 +24,10 @@ contract REGIncentiveVault is
 
     address private _regGovernor;
 
-    IERC20 private _depositToken;
+    IERC20 private _regToken;
 
     uint256 private _currentEpoch;
+
     uint256 private _currentTotalDeposit;
 
     // User current deposit
@@ -45,6 +46,8 @@ contract REGIncentiveVault is
     }
 
     function initialize(
+        address regGovernor,
+        address regToken,
         address defaultAdmin,
         address pauser,
         address upgrader
@@ -56,6 +59,9 @@ contract REGIncentiveVault is
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(PAUSER_ROLE, pauser);
         _grantRole(UPGRADER_ROLE, upgrader);
+
+        _regGovernor = regGovernor;
+        _regToken = IERC20(regToken);
     }
 
     /**
@@ -84,11 +90,11 @@ contract REGIncentiveVault is
         _regGovernor = regGovernor;
     }
 
-    function setDepositToken(
-        IERC20 depositToken
+    function setRegToken(
+        IERC20 regToken
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        emit SetDepositToken(address(depositToken));
-        _depositToken = depositToken;
+        emit SetRegToken(address(regToken));
+        _regToken = regToken;
     }
 
     function setNewEpoch(
@@ -106,7 +112,6 @@ contract REGIncentiveVault is
 
         // Cache the current epoch
         uint256 currentEpoch = _currentEpoch + 1;
-        ++_currentEpoch;
 
         // Initialize new EpochState
         EpochState storage epoch = _epochStates[currentEpoch];
@@ -129,7 +134,7 @@ contract REGIncentiveVault is
         _currentEpoch += 1;
     }
 
-    function deposit(uint256 amount) external {
+    function deposit(uint256 amount) external whenNotPaused {
         _validateSubscriptionPeriod();
 
         // Cache the current epoch
@@ -139,11 +144,12 @@ contract REGIncentiveVault is
 
         // Update UserGlobalState
         _userGlobalStates[msg.sender].currentDeposit += amount;
+        _currentTotalDeposit += amount;
 
-        _depositToken.safeTransferFrom(msg.sender, address(this), amount);
+        _regToken.safeTransferFrom(msg.sender, address(this), amount);
     }
 
-    function withdraw() external {
+    function withdraw() external whenNotPaused {
         // Check if the lock period has ended
         _validateLockPeriod();
 
@@ -153,8 +159,9 @@ contract REGIncentiveVault is
         // Update current deposit and transfer the deposit token back to the user
         uint256 currentDeposit = _userGlobalStates[msg.sender].currentDeposit;
         _userGlobalStates[msg.sender].currentDeposit = 0;
+        _currentTotalDeposit -= currentDeposit;
         emit Withdraw(msg.sender, currentDeposit);
-        _depositToken.safeTransfer(msg.sender, currentDeposit);
+        _regToken.safeTransfer(msg.sender, currentDeposit);
 
         // Claim bonus and update UserEpochState
         uint256 lastClaimedEpoch = _userGlobalStates[msg.sender]
@@ -177,30 +184,35 @@ contract REGIncentiveVault is
     ) external onlyGovernance {
         EpochState storage epochState = _epochStates[_currentEpoch];
         // Check if the timestamp is within the lock period
+        // Do not use revert to avoid reverting the whole castVote transaction
         if (
-            block.timestamp < epochState.subscriptionEnd ||
-            block.timestamp > epochState.lockPeriodEnd
-        ) revert REGIncentiveVaultErrors.OutOfLockPeriod();
+            block.timestamp > epochState.subscriptionEnd &&
+            block.timestamp <= epochState.lockPeriodEnd
+        ) {
+            // Update UserEpochState
+            UserEpochState storage user = _userEpochStates[_user][
+                _currentEpoch
+            ];
+            // Update depositAmount in UserEpochState if it has changed and update voteAmount
+            uint256 currentDeposit = _userGlobalStates[_user].currentDeposit;
+            if (user.depositAmount != currentDeposit) {
+                user.depositAmount = currentDeposit;
+            }
+            user.voteAmount += 1;
 
-        // Update UserEpochState
-        UserEpochState storage user = _userEpochStates[_user][_currentEpoch];
-        // Update depositAmount in UserEpochState if it has changed and update voteAmount
-        uint256 currentDeposit = _userGlobalStates[_user].currentDeposit;
-        if (user.depositAmount != currentDeposit) {
-            user.depositAmount = currentDeposit;
+            // Update EpochState
+            epochState.totalVotes += 1;
+            epochState.totalWeights += currentDeposit;
+
+            emit RecordVote(_user, proposalId, _currentEpoch);
+        } else {
+            emit RecordVoteNotActive(_user, proposalId, _currentEpoch);
         }
-        user.voteAmount += 1;
-
-        // Update EpochState
-        epochState.totalVotes += 1;
-        epochState.totalWeights += currentDeposit;
-
-        emit RecordVote(_user, proposalId, _currentEpoch);
     }
 
     function calculateBonus(
         address user
-    ) external view onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) external view returns (address[] memory, uint256[] memory) {
         // Cache the current epoch
         uint256 currentEpoch = _currentEpoch;
 
@@ -225,9 +237,11 @@ contract REGIncentiveVault is
             bonusTokens[i - 1] = epochState.bonusToken;
             bonusAmounts[i - 1] = userBonus;
         }
+
+        return (bonusTokens, bonusAmounts);
     }
 
-    function claimBonus() external {
+    function claimBonus() external whenNotPaused {
         // Claim bonus for all epochs from lastClaimedEpoch + 1 to currentEpoch
         uint256 lastClaimedEpoch = _userGlobalStates[msg.sender]
             .lastClaimedEpoch;
@@ -235,7 +249,7 @@ contract REGIncentiveVault is
         uint256 currentEpoch = _currentEpoch;
 
         // TODO check if the current epoch is active or not
-        for (uint256 i = lastClaimedEpoch + 1; i < currentEpoch; i++) {
+        for (uint256 i = lastClaimedEpoch + 1; i <= currentEpoch; i++) {
             _claimBonus(msg.sender, i);
         }
 
@@ -259,7 +273,9 @@ contract REGIncentiveVault is
 
             emit ClaimBonus(user, userBonus, epoch);
 
-            bonusToken.safeTransfer(user, userBonus);
+            if (userBonus > 0) {
+                bonusToken.safeTransfer(user, userBonus);
+            }
         }
     }
 
@@ -300,5 +316,40 @@ contract REGIncentiveVault is
         if (msg.sender != _regGovernor)
             revert REGIncentiveVaultErrors.OnlyRegGovernorAllowed();
         _;
+    }
+
+    function getRegGovernor() external view returns (address) {
+        return _regGovernor;
+    }
+
+    function getRegToken() external view returns (IERC20) {
+        return _regToken;
+    }
+
+    function getCurrentEpoch() external view returns (uint256) {
+        return _currentEpoch;
+    }
+
+    function getCurrentTotalDeposit() external view returns (uint256) {
+        return _currentTotalDeposit;
+    }
+
+    function getUserEpochState(
+        address user,
+        uint256 epoch
+    ) external view returns (UserEpochState memory) {
+        return _userEpochStates[user][epoch];
+    }
+
+    function getUserGlobalState(
+        address user
+    ) external view returns (UserGlobalState memory) {
+        return _userGlobalStates[user];
+    }
+
+    function getEpochState(
+        uint256 epoch
+    ) external view returns (EpochState memory) {
+        return _epochStates[epoch];
     }
 }

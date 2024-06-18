@@ -314,6 +314,6 @@ contract REGGovernor is
         override(AccessControlUpgradeable, GovernorUpgradeable)
         returns (bool)
     {
-        return supportsInterface(interfaceId);
+        return super.supportsInterface(interfaceId);
     }
 }

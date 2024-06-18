@@ -32,7 +32,7 @@ interface IREGIncentiveVault {
 
     event SetRegGovernor(address indexed regGovernor);
 
-    event SetDepositToken(address indexed depositToken);
+    event SetRegToken(address indexed regToken);
 
     event SetBonusToken(address indexed bonusToken);
 
@@ -66,6 +66,12 @@ interface IREGIncentiveVault {
     );
 
     event RecordVote(
+        address indexed user,
+        uint256 indexed proposalId,
+        uint256 indexed epoch
+    );
+
+    event RecordVoteNotActive(
         address indexed user,
         uint256 indexed proposalId,
         uint256 indexed epoch
