@@ -131,9 +131,16 @@ contract REGGovernor is
         bytes[] memory calldatas,
         string memory description
     ) public override returns (uint256) {
-        bool proposerHasVotes = getVotes(msg.sender, block.number - 1) >=
+        address proposer = _msgSender();
+
+        // check description restriction
+        if (!_isValidDescriptionForProposer(proposer, description)) {
+            revert GovernorRestrictedProposer(proposer);
+        }
+
+        bool proposerHasVotes = getVotes(proposer, clock() - 1) >=
             proposalThreshold();
-        bool proposerHasRole = hasRole(PROPOSER_ROLE, msg.sender);
+        bool proposerHasRole = hasRole(PROPOSER_ROLE, proposer);
 
         if (_proposerMode == ProposerMode.ProposerWithRole) {
             if (!proposerHasRole)
@@ -156,7 +163,8 @@ contract REGGovernor is
             revert REGGovernorErrors.InvalidProposerMode();
         }
 
-        return super.propose(targets, values, calldatas, description);
+        return
+            super._propose(targets, values, calldatas, description, proposer);
     }
 
     /**
