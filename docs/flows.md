@@ -51,3 +51,24 @@
 - REGGovernor.queue() (=> Timelock.scheduleBatch())
 - REGGovernor.execute() (=> Timelock.executeBatch())
   or REGGovernor.cancel() (=> Timelock.cancel())
+
+## REGIncentiveVault
+
+| Variables                        | Change              |
+| -------------------------------- | ------------------- |
+| \_regGovernor                    | setRegGovernor      |
+| \_regToken                       | setRegToken         |
+| \_currentEpoch                   | setNewEpoch         |
+| \_currentTotalDeposit            | deposit/withdraw    |
+| EpochState.subscriptionStart     | setNewEpoch         |
+| EpochState.subscriptionEnd       | setNewEpoch         |
+| EpochState.lockPeriodEnd         | setNewEpoch         |
+| EpochState.bonusToken            | setNewEpoch         |
+| EpochState.totalBonus            | setNewEpoch         |
+| EpochState.totalVotes            | recordVote          |
+| EpochState.totalWeights          | recordVote          |
+| UserGlobalState.currentDeposit   | deposit/withdraw    |
+| UserGlobalState.lastClaimedEpoch | withdraw/claimBonus |
+| UserEpochState.depositAmount     | recordVote          |
+| UserEpochState.voteAmount        | recordVote          |
+| UserEpochState.claimed           | withdraw/claimBonus |

@@ -15,6 +15,11 @@
       "address": "0x7466Fd3Ce12e6aF2F054E462366318D7D7D63756",
       "txHash": "0xa36eebb6532f758cf018aca5c46217fd6d7532c735d57d91d022d92ff8c2fa23",
       "kind": "uups"
+    },
+    {
+      "address": "0x0373CfFb3a5BA476A4025301F111197dCC48f9E1",
+      "txHash": "0x97ee2ff47494f9c2a4c0ba4037b3455da24a1aa28aa1b2b9a31ac85b0eab6193",
+      "kind": "uups"
     }
   ],
   "impls": {
@@ -632,6 +637,252 @@
               "label": "_version",
               "type": "t_string_storage",
               "src": "@openzeppelin\\contracts-upgradeable\\utils\\cryptography\\EIP712Upgradeable.sol:44"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:69"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:73"
+            }
+          ]
+        }
+      }
+    },
+    "707c5f8b5f3db9e2bbc39ef01f8f2252dd75b8e1b5736aee4c10f9f777c6fae4": {
+      "address": "0x0376bDEEF7C9a839F720885997Bc8b4f1AfDf522",
+      "txHash": "0x26aeb81b4bced5aec548284734768525cfc7c5fba770564b6025acf4485051fa",
+      "layout": {
+        "solcVersion": "0.8.20",
+        "storage": [
+          {
+            "label": "_regGovernor",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_address",
+            "contract": "REGIncentiveVault",
+            "src": "contracts\\REGIncentiveVault.sol:26"
+          },
+          {
+            "label": "_regToken",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_contract(IERC20)9637",
+            "contract": "REGIncentiveVault",
+            "src": "contracts\\REGIncentiveVault.sol:28"
+          },
+          {
+            "label": "_currentEpoch",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_uint256",
+            "contract": "REGIncentiveVault",
+            "src": "contracts\\REGIncentiveVault.sol:30"
+          },
+          {
+            "label": "_currentTotalDeposit",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_uint256",
+            "contract": "REGIncentiveVault",
+            "src": "contracts\\REGIncentiveVault.sol:32"
+          },
+          {
+            "label": "_userGlobalStates",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_mapping(t_address,t_struct(UserGlobalState)18382_storage)",
+            "contract": "REGIncentiveVault",
+            "src": "contracts\\REGIncentiveVault.sol:35"
+          },
+          {
+            "label": "_userEpochStates",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_struct(UserEpochState)18390_storage))",
+            "contract": "REGIncentiveVault",
+            "src": "contracts\\REGIncentiveVault.sol:38"
+          },
+          {
+            "label": "_epochStates",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_mapping(t_uint256,t_struct(EpochState)18406_storage)",
+            "contract": "REGIncentiveVault",
+            "src": "contracts\\REGIncentiveVault.sol:42"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(IERC20)9637": {
+            "label": "contract IERC20",
+            "numberOfBytes": "20"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_struct(UserEpochState)18390_storage))": {
+            "label": "mapping(address => mapping(uint256 => struct IREGIncentiveVault.UserEpochState))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(UserGlobalState)18382_storage)": {
+            "label": "mapping(address => struct IREGIncentiveVault.UserGlobalState)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(EpochState)18406_storage)": {
+            "label": "mapping(uint256 => struct IREGIncentiveVault.EpochState)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(UserEpochState)18390_storage)": {
+            "label": "mapping(uint256 => struct IREGIncentiveVault.UserEpochState)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(EpochState)18406_storage": {
+            "label": "struct IREGIncentiveVault.EpochState",
+            "members": [
+              {
+                "label": "subscriptionStart",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "subscriptionEnd",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "lockPeriodEnd",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "bonusToken",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "totalBonus",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "totalVotes",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "5"
+              },
+              {
+                "label": "totalWeights",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "6"
+              }
+            ],
+            "numberOfBytes": "224"
+          },
+          "t_struct(UserEpochState)18390_storage": {
+            "label": "struct IREGIncentiveVault.UserEpochState",
+            "members": [
+              {
+                "label": "depositAmount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "voteAmount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "claimed",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(UserGlobalState)18382_storage": {
+            "label": "struct IREGIncentiveVault.UserGlobalState",
+            "members": [
+              {
+                "label": "currentDeposit",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "lastClaimedEpoch",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(RoleData)25_storage)": {
+            "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)"
+          },
+          "t_bytes32": {
+            "label": "bytes32"
+          },
+          "t_struct(RoleData)25_storage": {
+            "label": "struct AccessControlUpgradeable.RoleData",
+            "members": [
+              {
+                "label": "hasRole",
+                "type": "t_mapping(t_address,t_bool)"
+              },
+              {
+                "label": "adminRole",
+                "type": "t_bytes32"
+              }
+            ]
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)"
+          },
+          "t_uint64": {
+            "label": "uint64"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.AccessControl": [
+            {
+              "contract": "AccessControlUpgradeable",
+              "label": "_roles",
+              "type": "t_mapping(t_bytes32,t_struct(RoleData)25_storage)",
+              "src": "@openzeppelin\\contracts-upgradeable\\access\\AccessControlUpgradeable.sol:61"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Pausable": [
+            {
+              "contract": "PausableUpgradeable",
+              "label": "_paused",
+              "type": "t_bool",
+              "src": "@openzeppelin\\contracts-upgradeable\\utils\\PausableUpgradeable.sol:21"
             }
           ],
           "erc7201:openzeppelin.storage.Initializable": [

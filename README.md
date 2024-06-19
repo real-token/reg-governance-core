@@ -104,18 +104,31 @@
 
 ## Audit
 
+Run Slither check:
+
+```
+slither contracts/REGGovernor.sol --solc-remaps '@openzeppelin=node_modules/@openzeppelin'
+
+slither contracts/REGIncentiveVault.sol --solc-remaps '@openzeppelin=node_modules/@openzeppelin'
+
+slither contracts/REGTreasuryDAO.sol --solc-remaps '@openzeppelin=node_modules/@openzeppelin'
+
+slither contracts/REGVotingPowerRegistry.sol --solc-remaps '@openzeppelin=node_modules/@openzeppelin'
+
+```
+
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 <!-- ROADMAP -->
 
 ## Roadmap
 
-- Governor contract ❌
-- Mock ERC20Votes contract (for register voting power) ❌
-- Testing ❌
-- Static analysis (Slither) ❌
-- Fuzzing (Echidna) ❌
-- Audit ❌
+- REGGovernor contract ✅
+- REGVotingPowerRegistry contract (for register voting power: offchain => onchain) ✅
+- REGTreasuryDAO contract (TimelockController) ✅
+- REGIncentiveVault contract ✅
+- Testing ✅
+- Static analysis (Slither) ✅
 
 See the [open issues](https://github.com/real-token/reg-governance-core/issues) for a full list of proposed features (and known issues).
 
@@ -140,6 +153,10 @@ npx hardhat test
 ```
 
 ## Deployments
+
+- Deploy REGVotingPowerRegistry
+- Deploy REGTreasuryDAO
+- Deploy REGGovernor with DAO + Registry address
 
 ```
 
