@@ -515,7 +515,7 @@ describe("REGIncentiveVault contract", function () {
     await time.increase(60 * 60 * 24 * 7); // 7 days
     await expect(regIncentiveVault.connect(voters[0]).withdraw())
       .to.emit(regIncentiveVault, "Withdraw")
-      .withArgs(voters[0].address, VOTER0_TOKENS);
+      .withArgs(voters[0].address, VOTER0_TOKENS, 1);
 
     console.log(
       "getUserGlobalState after withdraw:",

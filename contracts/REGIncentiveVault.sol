@@ -51,7 +51,7 @@ contract REGIncentiveVault is
         address defaultAdmin,
         address pauser,
         address upgrader
-    ) public initializer {
+    ) external initializer {
         __Pausable_init();
         __AccessControl_init();
         __UUPSUpgradeable_init();
@@ -89,6 +89,7 @@ contract REGIncentiveVault is
         _unpause();
     }
 
+    /// @inheritdoc IREGIncentiveVault
     function setRegGovernor(
         address regGovernor
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -96,6 +97,7 @@ contract REGIncentiveVault is
         _regGovernor = regGovernor;
     }
 
+    /// @inheritdoc IREGIncentiveVault
     function setRegToken(
         IERC20 regToken
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -103,6 +105,7 @@ contract REGIncentiveVault is
         _regToken = regToken;
     }
 
+    /// @inheritdoc IREGIncentiveVault
     function setNewEpoch(
         uint256 subscriptionStart,
         uint256 subscriptionEnd,
@@ -140,6 +143,7 @@ contract REGIncentiveVault is
         _currentEpoch += 1;
     }
 
+    /// @inheritdoc IREGIncentiveVault
     function deposit(uint256 amount) external whenNotPaused {
         _validateSubscriptionPeriod();
 
@@ -155,6 +159,7 @@ contract REGIncentiveVault is
         _regToken.safeTransferFrom(msg.sender, address(this), amount);
     }
 
+    /// @inheritdoc IREGIncentiveVault
     function withdraw() external whenNotPaused {
         // Check if the lock period has ended
         _validateLockPeriod();
@@ -163,15 +168,16 @@ contract REGIncentiveVault is
         uint256 currentDeposit = _userGlobalStates[msg.sender].currentDeposit;
         _userGlobalStates[msg.sender].currentDeposit = 0;
         _currentTotalDeposit -= currentDeposit;
-        emit Withdraw(msg.sender, currentDeposit);
+        emit Withdraw(msg.sender, currentDeposit, _currentEpoch);
         _regToken.safeTransfer(msg.sender, currentDeposit);
 
         // Claim bonus for user
         claimBonus();
     }
 
+    /// @inheritdoc IREGIncentiveVault
     function recordVote(
-        address _user,
+        address user,
         uint256 proposalId
     ) external onlyGovernance {
         EpochState storage epochState = _epochStates[_currentEpoch];
@@ -182,26 +188,27 @@ contract REGIncentiveVault is
             block.timestamp <= epochState.lockPeriodEnd
         ) {
             // Update UserEpochState
-            UserEpochState storage user = _userEpochStates[_user][
+            UserEpochState storage userState = _userEpochStates[user][
                 _currentEpoch
             ];
             // Update depositAmount in UserEpochState if it has changed and update voteAmount
-            uint256 currentDeposit = _userGlobalStates[_user].currentDeposit;
-            if (user.depositAmount != currentDeposit) {
-                user.depositAmount = currentDeposit;
+            uint256 currentDeposit = _userGlobalStates[user].currentDeposit;
+            if (userState.depositAmount != currentDeposit) {
+                userState.depositAmount = currentDeposit;
             }
-            user.voteAmount += 1;
+            userState.voteAmount += 1;
 
             // Update EpochState
             epochState.totalVotes += 1;
             epochState.totalWeights += currentDeposit;
 
-            emit RecordVote(_user, proposalId, _currentEpoch);
+            emit RecordVote(user, proposalId, _currentEpoch);
         } else {
-            emit RecordVoteNotActive(_user, proposalId, _currentEpoch);
+            emit RecordVoteNotActive(user, proposalId, _currentEpoch);
         }
     }
 
+    /// @inheritdoc IREGIncentiveVault
     function calculateBonus(
         address user
     ) external view returns (address[] memory, uint256[] memory) {
@@ -221,7 +228,7 @@ contract REGIncentiveVault is
         UserEpochState memory userState;
         uint256 userBonus;
 
-        for (uint256 i = 1; i <= maxEpochToClaim; i++) {
+        for (uint256 i = 1; i <= maxEpochToClaim; ) {
             epochState = _epochStates[i];
             userState = _userEpochStates[user][i];
 
@@ -233,11 +240,15 @@ contract REGIncentiveVault is
 
             bonusTokens[i - 1] = epochState.bonusToken;
             bonusAmounts[i - 1] = userBonus;
+            unchecked {
+                ++i;
+            }
         }
 
         return (bonusTokens, bonusAmounts);
     }
 
+    /// @inheritdoc IREGIncentiveVault
     function claimBonus() public whenNotPaused {
         // Claim bonus for all epochs from lastClaimedEpoch + 1 to currentEpoch
         uint256 lastClaimedEpoch = _userGlobalStates[msg.sender]
@@ -253,8 +264,11 @@ contract REGIncentiveVault is
 
         _userGlobalStates[msg.sender].lastClaimedEpoch = maxEpochToClaim;
 
-        for (uint256 i = lastClaimedEpoch + 1; i <= maxEpochToClaim; i++) {
+        for (uint256 i = lastClaimedEpoch + 1; i <= maxEpochToClaim; ) {
             _claimBonus(msg.sender, i);
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -314,22 +328,39 @@ contract REGIncentiveVault is
         ) revert REGIncentiveVaultErrors.LockPeriodNotEnded();
     }
 
+    /// @inheritdoc IREGIncentiveVault
     function getRegGovernor() external view returns (address) {
         return _regGovernor;
     }
 
+    /// @inheritdoc IREGIncentiveVault
     function getRegToken() external view returns (IERC20) {
         return _regToken;
     }
 
-    function getCurrentEpoch() external view returns (uint256) {
-        return _currentEpoch;
-    }
-
+    /// @inheritdoc IREGIncentiveVault
     function getCurrentTotalDeposit() external view returns (uint256) {
         return _currentTotalDeposit;
     }
 
+    /// @inheritdoc IREGIncentiveVault
+    function getCurrentEpoch() external view returns (uint256) {
+        return _currentEpoch;
+    }
+
+    /// @inheritdoc IREGIncentiveVault
+    function getCurrentEpochState() external view returns (EpochState memory) {
+        return _epochStates[_currentEpoch];
+    }
+
+    /// @inheritdoc IREGIncentiveVault
+    function getEpochState(
+        uint256 epoch
+    ) external view returns (EpochState memory) {
+        return _epochStates[epoch];
+    }
+
+    /// @inheritdoc IREGIncentiveVault
     function getUserEpochState(
         address user,
         uint256 epoch
@@ -337,15 +368,10 @@ contract REGIncentiveVault is
         return _userEpochStates[user][epoch];
     }
 
+    /// @inheritdoc IREGIncentiveVault
     function getUserGlobalState(
         address user
     ) external view returns (UserGlobalState memory) {
         return _userGlobalStates[user];
-    }
-
-    function getEpochState(
-        uint256 epoch
-    ) external view returns (EpochState memory) {
-        return _epochStates[epoch];
     }
 }

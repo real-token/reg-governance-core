@@ -771,6 +771,84 @@ describe("REGGovernor contract", function () {
     );
   });
 
+  it("should setProposalThreshold through governance votes", async function () {
+    const {
+      regGovernor,
+      regVotingPowerRegistry,
+      admin,
+      proposer,
+      register,
+      voters,
+      votingStruct1,
+      votingDelay,
+      votingPeriod,
+      minDelay,
+    } = await loadFixture(deployGovernanceFixture);
+
+    console.log(
+      "proposalThreshold before vote",
+      await regGovernor.proposalThreshold()
+    );
+
+    await regVotingPowerRegistry
+      .connect(register)
+      .registerVotingPower(votingStruct1);
+
+    await regGovernor
+      .connect(admin)
+      .grantRole(await regGovernor.PROPOSER_ROLE(), proposer.address);
+
+    // Propose to change setIncentiveEnabled
+    const transferCalldata = regGovernor.interface.encodeFunctionData(
+      "setProposalThreshold",
+      [0]
+    );
+    console.log("transferCalldata", transferCalldata);
+    const description = "Proposal #1: Set proposal threshold to 0";
+
+    await expect(
+      regGovernor
+        .connect(proposer)
+        .propose([regGovernor.address], [0], [transferCalldata], description)
+    ).to.emit(regGovernor, "ProposalCreated");
+
+    await time.increase(votingDelay);
+
+    const proposalId = await regGovernor.hashProposal(
+      [regGovernor.address],
+      [0],
+      [transferCalldata],
+      ethers.utils.id(description)
+    );
+    console.log("descriptionHash", ethers.utils.id(description));
+    console.log("proposalId", proposalId);
+
+    await regGovernor.connect(voters[0]).castVote(proposalId, 1);
+
+    await time.increase(votingPeriod);
+
+    await regGovernor.queue(
+      [regGovernor.address],
+      [0],
+      [transferCalldata],
+      ethers.utils.id(description)
+    );
+
+    await time.increase(minDelay);
+
+    await regGovernor.execute(
+      [regGovernor.address],
+      [0],
+      [transferCalldata],
+      ethers.utils.id(description)
+    );
+
+    console.log(
+      "proposalThreshold after vote",
+      await regGovernor.proposalThreshold()
+    );
+  });
+
   it("should propose/castVote/queue/execute proposals", async function () {
     const {
       regTokenMock,
