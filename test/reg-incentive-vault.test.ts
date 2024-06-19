@@ -305,15 +305,17 @@ describe("REGIncentiveVault contract", function () {
   });
 
   it("should revert on re-calling initialize", async function () {
-    const { regGovernor, admin, regVotingPowerRegistry, regTreasuryDAO } =
+    const { regIncentiveVault, regGovernor, regTokenMock, admin } =
       await loadFixture(deployGovernanceFixture);
     await expect(
-      regGovernor.connect(admin).initialize(
-        regVotingPowerRegistry.address, // ERC20Votes
-        regTreasuryDAO.address, // TimelockController
-        admin.address // default admin
+      regIncentiveVault.connect(admin).initialize(
+        regGovernor.address, // governor
+        regTokenMock.address, // REG token
+        admin.address, // default admin
+        admin.address, // pauser role
+        admin.address // upgrader admin
       )
-    ).to.be.revertedWithCustomError(regGovernor, "InvalidInitialization");
+    ).to.be.revertedWithCustomError(regIncentiveVault, "InvalidInitialization");
   });
 
   it("should be able to pause/unpause the REGIncentiveVault contract", async function () {
@@ -343,6 +345,155 @@ describe("REGIncentiveVault contract", function () {
     )
       .to.emit(regIncentiveVault, "SetRegToken")
       .withArgs(regTokenMock.address);
+  });
+
+  it("should revert when setRegGovernor/setRegToken/setNewEpoch with non-admin", async function () {
+    const {
+      regIncentiveVault,
+      regGovernor,
+      regTokenMock,
+      proposer,
+      USDC_BONUS,
+      usdcTokenMock,
+    } = await loadFixture(deployGovernanceFixture);
+
+    await expect(
+      regIncentiveVault.connect(proposer).pause()
+    ).to.revertedWithCustomError(
+      regIncentiveVault,
+      "AccessControlUnauthorizedAccount"
+    );
+
+    await expect(
+      regIncentiveVault.connect(proposer).unpause()
+    ).to.revertedWithCustomError(
+      regIncentiveVault,
+      "AccessControlUnauthorizedAccount"
+    );
+
+    await expect(
+      regIncentiveVault.connect(proposer).setRegGovernor(regGovernor.address)
+    ).to.revertedWithCustomError(
+      regIncentiveVault,
+      "AccessControlUnauthorizedAccount"
+    );
+
+    await expect(
+      regIncentiveVault.connect(proposer).setRegToken(regTokenMock.address)
+    ).to.revertedWithCustomError(
+      regIncentiveVault,
+      "AccessControlUnauthorizedAccount"
+    );
+
+    // Set up the epoch
+    const subscriptionStart = (await time.latest()) + 60 * 60 * 24 * 1; // 1 days;
+    const subscriptionEnd = subscriptionStart + 60 * 60 * 24 * 2; // 1 days
+    const lockPeriodEnd = subscriptionEnd + 60 * 60 * 24 * 7; // 7 days
+
+    await expect(
+      regIncentiveVault
+        .connect(proposer)
+        .setNewEpoch(
+          subscriptionStart,
+          subscriptionEnd,
+          lockPeriodEnd,
+          usdcTokenMock.address,
+          USDC_BONUS
+        )
+    ).to.be.revertedWithCustomError(
+      regIncentiveVault,
+      "AccessControlUnauthorizedAccount"
+    );
+  });
+
+  it("should revert when setNewEpoch with non wrong parameters", async function () {
+    const { regIncentiveVault, admin, USDC_BONUS, usdcTokenMock } =
+      await loadFixture(deployGovernanceFixture);
+
+    // Set up the epoch
+    const subscriptionStart = (await time.latest()) + 60 * 60 * 24 * 1; // 1 days;
+    const subscriptionEnd = subscriptionStart + 60 * 60 * 24 * 2; // 1 days
+    const lockPeriodEnd = subscriptionEnd + 60 * 60 * 24 * 7; // 7 days
+
+    // subscriptionStart > subscriptionEnd
+    await expect(
+      regIncentiveVault
+        .connect(admin)
+        .setNewEpoch(
+          subscriptionEnd,
+          subscriptionStart,
+          lockPeriodEnd,
+          usdcTokenMock.address,
+          USDC_BONUS
+        )
+    ).to.be.revertedWithCustomError(
+      regIncentiveVault,
+      "InvalidTimestampForEpoch"
+    );
+
+    // subscriptionEnd > lockPeriodEnd
+    await expect(
+      regIncentiveVault
+        .connect(admin)
+        .setNewEpoch(
+          subscriptionStart,
+          lockPeriodEnd,
+          subscriptionEnd,
+          usdcTokenMock.address,
+          USDC_BONUS
+        )
+    ).to.be.revertedWithCustomError(
+      regIncentiveVault,
+      "InvalidTimestampForEpoch"
+    );
+
+    // block.timestamp > subscriptionStart
+    await time.increase(60 * 60 * 24 * 1 + 1); // 1 days
+    await expect(
+      regIncentiveVault
+        .connect(admin)
+        .setNewEpoch(
+          subscriptionStart,
+          subscriptionEnd,
+          lockPeriodEnd,
+          usdcTokenMock.address,
+          USDC_BONUS
+        )
+    ).to.be.revertedWithCustomError(
+      regIncentiveVault,
+      "InvalidTimestampForEpoch"
+    );
+  });
+
+  it("should revert when deposit/withdraw during pause", async function () {
+    const { regIncentiveVault, admin, VOTER0_TOKENS } = await loadFixture(
+      deployGovernanceFixture
+    );
+
+    await regIncentiveVault.connect(admin).pause();
+    expect(await regIncentiveVault.paused()).to.be.true;
+
+    await expect(
+      regIncentiveVault.connect(admin).deposit(VOTER0_TOKENS)
+    ).to.revertedWithCustomError(regIncentiveVault, "EnforcedPause");
+
+    await expect(
+      regIncentiveVault.connect(admin).withdraw()
+    ).to.revertedWithCustomError(regIncentiveVault, "EnforcedPause");
+
+    await expect(
+      regIncentiveVault.connect(admin).claimBonus()
+    ).to.revertedWithCustomError(regIncentiveVault, "EnforcedPause");
+  });
+
+  it("should revert when recordVote with non-governor", async function () {
+    const { regIncentiveVault, admin } = await loadFixture(
+      deployGovernanceFixture
+    );
+
+    await expect(
+      regIncentiveVault.connect(admin).recordVote(admin.address, 1)
+    ).to.revertedWithCustomError(regIncentiveVault, "OnlyRegGovernorAllowed");
   });
 
   it("should setIncentiveVault then record", async function () {
@@ -488,6 +639,10 @@ describe("REGIncentiveVault contract", function () {
       "getEpochState after lock: ",
       await regIncentiveVault.getEpochState(1)
     );
+    console.log(
+      "getCurrentEpochState after lock: ",
+      await regIncentiveVault.getCurrentEpochState()
+    );
 
     // Increase time to lockPeriodEnd
     // await time.increase(60 * 60 * 24 * 7); // 7 days
@@ -510,6 +665,11 @@ describe("REGIncentiveVault contract", function () {
       "getUserEpochState",
       await regIncentiveVault.getUserEpochState(voters[0].address, 1)
     );
+
+    // Revert on withdraw before lock period
+    await expect(
+      regIncentiveVault.connect(voters[0]).withdraw()
+    ).to.revertedWithCustomError(regIncentiveVault, "LockPeriodNotEnded");
 
     // Withdraw
     await time.increase(60 * 60 * 24 * 7); // 7 days

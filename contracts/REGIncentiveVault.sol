@@ -45,6 +45,14 @@ contract REGIncentiveVault is
         _disableInitializers();
     }
 
+    /**
+     * @notice Initialize the contract with the required parameters
+     * @param regGovernor is the address of the REG Governor
+     * @param regToken is the address of the REG Token
+     * @param defaultAdmin is the address of the default admin
+     * @param pauser is the address of the pauser
+     * @param upgrader is the address of the upgrader
+     **/
     function initialize(
         address regGovernor,
         address regToken,
@@ -272,6 +280,11 @@ contract REGIncentiveVault is
         }
     }
 
+    /**
+     * @notice Claims the user's bonus for the epoch.
+     * @param user The address of the user.
+     * @param epoch The epoch number.
+     */
     function _claimBonus(address user, uint256 epoch) private {
         UserEpochState storage userState = _userEpochStates[user][epoch];
 
@@ -295,6 +308,9 @@ contract REGIncentiveVault is
         }
     }
 
+    /**
+     * @notice Validate the current timestamp is within the subscription period.
+     */
     function _validateSubscriptionPeriod() private view {
         // Cache the current epoch
         EpochState memory epochState = _epochStates[_currentEpoch];
@@ -306,18 +322,28 @@ contract REGIncentiveVault is
             revert REGIncentiveVaultErrors.SubscriptionPeriodEnded();
     }
 
+    /**
+     * @notice Validate the timestamp of the epoch.
+     * @param subscriptionStart The start time of the subscription period.
+     * @param subscriptionEnd The end time of the subscription period.
+     * @param lockPeriodEnd The end time of the lock period.
+     */
     function _validateTimestampOfEpoch(
         uint256 subscriptionStart,
         uint256 subscriptionEnd,
         uint256 lockPeriodEnd
     ) private view {
         if (
+            _epochStates[_currentEpoch].lockPeriodEnd > block.timestamp || // Check if the current epoch lock period has ended
             block.timestamp > subscriptionStart ||
             subscriptionStart > subscriptionEnd ||
             subscriptionEnd > lockPeriodEnd
         ) revert REGIncentiveVaultErrors.InvalidTimestampForEpoch();
     }
 
+    /**
+     * @notice Validate the current timestamp is not within the lock period.
+     */
     function _validateLockPeriod() private view {
         // Cache the current epoch
         EpochState memory epochState = _epochStates[_currentEpoch];
