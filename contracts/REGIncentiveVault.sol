@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -73,6 +73,12 @@ contract REGIncentiveVault is
         address newImplementation
     ) internal override onlyRole(UPGRADER_ROLE) {
         // Intentionally left blank
+    }
+
+    modifier onlyGovernance() {
+        if (msg.sender != _regGovernor)
+            revert REGIncentiveVaultErrors.OnlyRegGovernorAllowed();
+        _;
     }
 
     function pause() external onlyRole(PAUSER_ROLE) {
@@ -153,9 +159,6 @@ contract REGIncentiveVault is
         // Check if the lock period has ended
         _validateLockPeriod();
 
-        // Cache the current epoch
-        uint256 currentEpoch = _currentEpoch;
-
         // Update current deposit and transfer the deposit token back to the user
         uint256 currentDeposit = _userGlobalStates[msg.sender].currentDeposit;
         _userGlobalStates[msg.sender].currentDeposit = 0;
@@ -163,19 +166,8 @@ contract REGIncentiveVault is
         emit Withdraw(msg.sender, currentDeposit);
         _regToken.safeTransfer(msg.sender, currentDeposit);
 
-        // Claim bonus and update UserEpochState
-        uint256 lastClaimedEpoch = _userGlobalStates[msg.sender]
-            .lastClaimedEpoch;
-        _userGlobalStates[msg.sender].lastClaimedEpoch = currentEpoch;
-
-        // Claim bonus for all epochs from lastClaimedEpoch + 1 to currentEpoch
-        // TODO check if the current epoch is active or not
-        for (uint256 i = lastClaimedEpoch + 1; i <= currentEpoch; ) {
-            _claimBonus(msg.sender, i);
-            unchecked {
-                ++i;
-            }
-        }
+        // Claim bonus for user
+        claimBonus();
     }
 
     function recordVote(
@@ -216,6 +208,12 @@ contract REGIncentiveVault is
         // Cache the current epoch
         uint256 currentEpoch = _currentEpoch;
 
+        // Check if the current epoch is active or not
+        uint256 maxEpochToClaim = block.timestamp >
+            _epochStates[currentEpoch].lockPeriodEnd
+            ? currentEpoch
+            : currentEpoch - 1;
+
         // Each epoch bonusAmount and bonusToken
         address[] memory bonusTokens = new address[](currentEpoch);
         uint256[] memory bonusAmounts = new uint256[](currentEpoch);
@@ -223,8 +221,7 @@ contract REGIncentiveVault is
         UserEpochState memory userState;
         uint256 userBonus;
 
-        // TODO check if the current epoch is active or not
-        for (uint256 i = 1; i <= currentEpoch; i++) {
+        for (uint256 i = 1; i <= maxEpochToClaim; i++) {
             epochState = _epochStates[i];
             userState = _userEpochStates[user][i];
 
@@ -241,19 +238,24 @@ contract REGIncentiveVault is
         return (bonusTokens, bonusAmounts);
     }
 
-    function claimBonus() external whenNotPaused {
+    function claimBonus() public whenNotPaused {
         // Claim bonus for all epochs from lastClaimedEpoch + 1 to currentEpoch
         uint256 lastClaimedEpoch = _userGlobalStates[msg.sender]
             .lastClaimedEpoch;
         // Cache the current epoch
         uint256 currentEpoch = _currentEpoch;
 
-        // TODO check if the current epoch is active or not
-        for (uint256 i = lastClaimedEpoch + 1; i <= currentEpoch; i++) {
+        // Check if the current epoch is active or not
+        uint256 maxEpochToClaim = block.timestamp >
+            _epochStates[currentEpoch].lockPeriodEnd
+            ? currentEpoch
+            : currentEpoch - 1;
+
+        _userGlobalStates[msg.sender].lastClaimedEpoch = maxEpochToClaim;
+
+        for (uint256 i = lastClaimedEpoch + 1; i <= maxEpochToClaim; i++) {
             _claimBonus(msg.sender, i);
         }
-
-        _userGlobalStates[msg.sender].lastClaimedEpoch = _currentEpoch;
     }
 
     function _claimBonus(address user, uint256 epoch) private {
@@ -310,12 +312,6 @@ contract REGIncentiveVault is
             block.timestamp > epochState.subscriptionEnd &&
             block.timestamp <= epochState.lockPeriodEnd
         ) revert REGIncentiveVaultErrors.LockPeriodNotEnded();
-    }
-
-    modifier onlyGovernance() {
-        if (msg.sender != _regGovernor)
-            revert REGIncentiveVaultErrors.OnlyRegGovernorAllowed();
-        _;
     }
 
     function getRegGovernor() external view returns (address) {
