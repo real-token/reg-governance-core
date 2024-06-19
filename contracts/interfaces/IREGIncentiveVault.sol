@@ -181,6 +181,22 @@ interface IREGIncentiveVault {
     function deposit(uint256 amount) external;
 
     /**
+     * @notice Deposits a specified amount into the vault with permit.
+     * @param amount The amount to deposit.
+     * @param deadline The deadline for the permit.
+     * @param v The v value of the permit signature.
+     * @param r The r value of the permit signature.
+     * @param s The s value of the permit signature.
+     */
+    function depositWithPermit(
+        uint256 amount,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
+
+    /**
      * @notice Withdraws the user's deposit from the vault.
      */
     function withdraw() external;

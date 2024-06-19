@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IREGIncentiveVault.sol";
 import "./libraries/REGIncentiveVaultErrors.sol";
@@ -152,7 +153,7 @@ contract REGIncentiveVault is
     }
 
     /// @inheritdoc IREGIncentiveVault
-    function deposit(uint256 amount) external whenNotPaused {
+    function deposit(uint256 amount) public whenNotPaused {
         _validateSubscriptionPeriod();
 
         // Cache the current epoch
@@ -168,6 +169,26 @@ contract REGIncentiveVault is
     }
 
     /// @inheritdoc IREGIncentiveVault
+    function depositWithPermit(
+        uint256 amount,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external whenNotPaused {
+        IERC20Permit(address(_regToken)).permit(
+            msg.sender,
+            address(this),
+            amount,
+            deadline,
+            v,
+            r,
+            s
+        );
+        deposit(amount);
+    }
+
+    /// @inheritdoc IREGIncentiveVault
     function withdraw() external whenNotPaused {
         // Check if the lock period has ended
         _validateLockPeriod();
@@ -176,7 +197,9 @@ contract REGIncentiveVault is
         uint256 currentDeposit = _userGlobalStates[msg.sender].currentDeposit;
         _userGlobalStates[msg.sender].currentDeposit = 0;
         _currentTotalDeposit -= currentDeposit;
+
         emit Withdraw(msg.sender, currentDeposit, _currentEpoch);
+
         _regToken.safeTransfer(msg.sender, currentDeposit);
 
         // Claim bonus for user
