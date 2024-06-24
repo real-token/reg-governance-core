@@ -36,6 +36,8 @@ interface IREGGovernor {
      */
     event SetRegIncentiveVault(IREGIncentiveVault regIncentiveVault);
 
+    event ProposalCreatedDescriptionHash(bytes32 descriptionHash);
+
     /**
      * @notice Sets the proposer mode.
      * @param proposerMode The new proposer mode.

@@ -163,6 +163,10 @@ contract REGGovernor is
             revert REGGovernorErrors.InvalidProposerMode();
         }
 
+        // Emit an additionnal event to store the hash of the proposal description
+        // Otherwise it is extremely difficult to calculate this from description string emitted
+        emit ProposalCreatedDescriptionHash(keccak256(bytes(description)));
+
         return
             super._propose(targets, values, calldatas, description, proposer);
     }
