@@ -263,11 +263,16 @@ contract REGIncentiveVault is
             epochState = _epochStates[i];
             userState = _userEpochStates[user][i];
 
-            userBonus =
-                (userState.depositAmount *
-                    userState.voteAmount *
-                    epochState.totalBonus) /
-                epochState.totalWeights;
+            // Check totalWeights is not 0
+            if (epochState.totalWeights == 0) {
+                userBonus = 0;
+            } else {
+                userBonus =
+                    (userState.depositAmount *
+                        userState.voteAmount *
+                        epochState.totalBonus) /
+                    epochState.totalWeights;
+            }
 
             bonusTokens[i - 1] = epochState.bonusToken;
             bonusAmounts[i - 1] = userBonus;
@@ -311,15 +316,24 @@ contract REGIncentiveVault is
     function _claimBonus(address user, uint256 epoch) private {
         UserEpochState storage userState = _userEpochStates[user][epoch];
 
+        uint userBonus;
+
         // If user has not claimed bonus, claim it, otherwise do nothing to avoid revert
         if (!userState.claimed) {
             EpochState memory epochState = _epochStates[epoch];
 
             IERC20 bonusToken = IERC20(epochState.bonusToken);
 
-            uint256 userBonus = (userState.depositAmount *
-                userState.voteAmount *
-                epochState.totalBonus) / epochState.totalWeights;
+            // Check totalWeights is not 0
+            if (epochState.totalWeights == 0) {
+                userBonus = 0;
+            } else {
+                userBonus =
+                    (userState.depositAmount *
+                        userState.voteAmount *
+                        epochState.totalBonus) /
+                    epochState.totalWeights;
+            }
 
             userState.claimed = true;
 

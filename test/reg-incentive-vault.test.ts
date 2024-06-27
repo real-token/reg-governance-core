@@ -3,6 +3,7 @@ import { ethers, upgrades } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { ZERO_ADDRESS } from "../helpers/constants";
+import { getPermitSignatureERC20 } from "./helpers/utils";
 import {
   REGGovernor,
   REGVotingPowerRegistry,
@@ -285,12 +286,6 @@ describe("REGIncentiveVault contract", function () {
 
     expect(await regIncentiveVault.getCurrentTotalDeposit()).to.equal(0);
 
-    // expect(await regIncentiveVault.getUserEpochState(voters[0], 0)).to.equal(0);
-
-    // expect(await regIncentiveVault.getUserGlobalState(voters[0])).to.equal(0);
-
-    // expect(await regIncentiveVault.getEpochState(0)).to.equal(0);
-
     console.log(
       "getUserEpochState: ",
       await regIncentiveVault.getUserEpochState(voters[0].address, 0)
@@ -496,10 +491,11 @@ describe("REGIncentiveVault contract", function () {
     ).to.revertedWithCustomError(regIncentiveVault, "OnlyRegGovernorAllowed");
   });
 
+  it("should be able to depositWithPermit", async function () {});
+
   it("should setIncentiveVault then record", async function () {
     const {
       regGovernor,
-      regVotingPowerRegistry,
       regIncentiveVault,
       regTokenMock,
       usdcTokenMock,
@@ -508,8 +504,6 @@ describe("REGIncentiveVault contract", function () {
       register,
       voters,
       votingDelay,
-      votingPeriod,
-      minDelay,
       USDC_BONUS,
       VOTER0_TOKENS,
       VOTER1_TOKENS,
@@ -676,6 +670,11 @@ describe("REGIncentiveVault contract", function () {
     await expect(regIncentiveVault.connect(voters[0]).withdraw())
       .to.emit(regIncentiveVault, "Withdraw")
       .withArgs(voters[0].address, VOTER0_TOKENS, 1);
+
+    // Withdraw when already withdrawn
+    await expect(regIncentiveVault.connect(voters[0]).withdraw())
+      .to.emit(regIncentiveVault, "Withdraw")
+      .withArgs(voters[0].address, 0, 1);
 
     console.log(
       "getUserGlobalState after withdraw:",
