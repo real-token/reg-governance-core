@@ -70,7 +70,10 @@ contract REGIncentiveVault is
         _grantRole(UPGRADER_ROLE, upgrader);
 
         _regGovernor = regGovernor;
+        emit SetRegGovernor(regGovernor);
+
         _regToken = IERC20(regToken);
+        emit SetRegToken(regToken);
     }
 
     /**
@@ -189,18 +192,26 @@ contract REGIncentiveVault is
     }
 
     /// @inheritdoc IREGIncentiveVault
-    function withdraw() external whenNotPaused {
+    function withdraw(uint256 amount) external whenNotPaused {
         // Check if the lock period has ended
         _validateLockPeriod();
 
         // Update current deposit and transfer the deposit token back to the user
         uint256 currentDeposit = _userGlobalStates[msg.sender].currentDeposit;
-        _userGlobalStates[msg.sender].currentDeposit = 0;
-        _currentTotalDeposit -= currentDeposit;
 
-        emit Withdraw(msg.sender, currentDeposit, _currentEpoch);
+        uint256 amountToWithdraw = amount > currentDeposit
+            ? currentDeposit
+            : amount;
 
-        _regToken.safeTransfer(msg.sender, currentDeposit);
+        _userGlobalStates[msg.sender].currentDeposit =
+            currentDeposit -
+            amountToWithdraw;
+
+        _currentTotalDeposit -= amountToWithdraw;
+
+        emit Withdraw(msg.sender, amountToWithdraw, _currentEpoch);
+
+        _regToken.safeTransfer(msg.sender, amountToWithdraw);
 
         // Claim bonus for user
         claimBonus();

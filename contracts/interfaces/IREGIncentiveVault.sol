@@ -198,8 +198,10 @@ interface IREGIncentiveVault {
 
     /**
      * @notice Withdraws the user's deposit from the vault.
+		 * @param amount The amount to withdraw.
+
      */
-    function withdraw() external;
+    function withdraw(uint256 amount) external;
 
     /**
      * @notice Claims the user's bonus for the current epoch.

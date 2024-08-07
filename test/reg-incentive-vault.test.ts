@@ -473,7 +473,7 @@ describe("REGIncentiveVault contract", function () {
     ).to.revertedWithCustomError(regIncentiveVault, "EnforcedPause");
 
     await expect(
-      regIncentiveVault.connect(admin).withdraw()
+      regIncentiveVault.connect(admin).withdraw(VOTER0_TOKENS)
     ).to.revertedWithCustomError(regIncentiveVault, "EnforcedPause");
 
     await expect(
@@ -662,17 +662,17 @@ describe("REGIncentiveVault contract", function () {
 
     // Revert on withdraw before lock period
     await expect(
-      regIncentiveVault.connect(voters[0]).withdraw()
+      regIncentiveVault.connect(voters[0]).withdraw(VOTER0_TOKENS)
     ).to.revertedWithCustomError(regIncentiveVault, "LockPeriodNotEnded");
 
     // Withdraw
     await time.increase(60 * 60 * 24 * 7); // 7 days
-    await expect(regIncentiveVault.connect(voters[0]).withdraw())
+    await expect(regIncentiveVault.connect(voters[0]).withdraw(VOTER0_TOKENS))
       .to.emit(regIncentiveVault, "Withdraw")
       .withArgs(voters[0].address, VOTER0_TOKENS, 1);
 
     // Withdraw when already withdrawn
-    await expect(regIncentiveVault.connect(voters[0]).withdraw())
+    await expect(regIncentiveVault.connect(voters[0]).withdraw(VOTER0_TOKENS))
       .to.emit(regIncentiveVault, "Withdraw")
       .withArgs(voters[0].address, 0, 1);
 
