@@ -154,10 +154,12 @@ npx hardhat test
 
 ## Deployments
 
-- Deploy REGVotingPowerRegistry
-- Deploy REGTreasuryDAO
-- Deploy REGGovernor with DAO + Registry address
+Step to deploy DAO contracts:
 
+- Deploy REGVotingPowerRegistry: set VOTING_DEFAULT_ADMIN, VOTING_REGISTER, VOTING_UPGRADER in .env
+- Deploy REGTreasuryDAO: set TIMELOCK_MIN_DELAY, TIMELOCK_DEFAULT_ADMIN in .env
+- Deploy REGGovernor with DAO + Registry address: set GOVERNOR_TOKEN, GOVERNOR_TIMELOCK, GOVERNOR_DEFAULT_ADMIN in .env
+- Deploy REGIncentiveVault: set GOVERNOR_ADDRESS, REG_ADDRESS, INCENTIVE_VAULT_ADMIN, INCENTIVE_VAULT_UPGRADER, INCENTIVE_VAULT_PAUSER in .env
 ```
 
 ```
