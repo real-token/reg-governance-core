@@ -47,10 +47,10 @@ contract REGGovernor is
         address defaultAdmin
     ) public initializer {
         __Governor_init("REGGovernor");
-        __GovernorSettings_init(15 minutes, 1 hours, 200e18);
+        __GovernorSettings_init(1 days, 7 days, 100e18);
         __GovernorCountingSimple_init();
         __GovernorVotes_init(_token);
-        __GovernorVotesQuorumFraction_init(4);
+        __GovernorVotesQuorumFraction_init(5);
         __GovernorTimelockControl_init(_timelock);
         __AccessControl_init();
         __UUPSUpgradeable_init();
