@@ -6,7 +6,6 @@
 [![Issues][issues-shield]][issues-url]
 [![MIT License][license-shield]][license-url]
 [![LinkedIn][linkedin-shield]][linkedin-url]
-[![Build pass](https://github.com/real-token/reg-governance-core/actions/workflows/node.js.yml/badge.svg)](https://github.com/real-token/reg-governance-core/actions/workflows/node.js.yml)
 [![Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
 
 <!-- PROJECT LOGO -->
@@ -160,9 +159,10 @@ Step to deploy DAO contracts:
 - Deploy REGTreasuryDAO: set TIMELOCK_MIN_DELAY, TIMELOCK_DEFAULT_ADMIN in .env
 - Deploy REGGovernor with DAO + Registry address: set GOVERNOR_TOKEN, GOVERNOR_TIMELOCK, GOVERNOR_DEFAULT_ADMIN in .env
 - Deploy REGIncentiveVault: set GOVERNOR_ADDRESS, REG_ADDRESS, INCENTIVE_VAULT_ADMIN, INCENTIVE_VAULT_UPGRADER, INCENTIVE_VAULT_PAUSER in .env
-```
 
-```
+## Documentation
+
+The documentation of governance contracts are found [here](./docs/guidelines/).
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

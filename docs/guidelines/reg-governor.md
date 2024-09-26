@@ -1,12 +1,14 @@
-## REGGovernor Contract Documentation
+# REGGovernor Contract Documentation
 
-### Overview
+## Overview
 
-The `REGGovernor` contract is an upgradable governance contract that allows for decentralized decision-making through proposals and voting. It integrates with a timelock controller to ensure proposals go through a time delay before execution, as well as an incentive vault that can be used to reward users for their participation in the governance process.
+The `REGGovernor` contract is a governance contract that extends OpenZeppelin's Governor contracts to manage proposals and voting within a decentralized organization. It introduces additional features such as customizable proposer requirements, integration with an incentive vault for rewarding voter participation, and enhanced access control mechanisms.
 
-This contract leverages multiple OpenZeppelin governor extensions, allowing for voting, proposal thresholds, and quorum calculations. It supports a flexible proposer mode system that restricts who can submit proposals based on roles and/or voting power.
+## Inheritance
 
-### Inheritance
+The `REGGovernor` contract inherits from multiple OpenZeppelin upgradeable contracts and implements the `IREGGovernor` interface:
+
+- **Inheritance:**
 
 - **`GovernorUpgradeable`**: Core governance logic from OpenZeppelin.
 - **`GovernorSettingsUpgradeable`**: Manages voting delay, voting period, and proposal thresholds.
@@ -17,65 +19,83 @@ This contract leverages multiple OpenZeppelin governor extensions, allowing for 
 - **`AccessControlUpgradeable`**: Manages roles and access control for different functions.
 - **`UUPSUpgradeable`**: Provides the ability to upgrade the contract using the UUPS proxy pattern.
 
-### Roles
+## Key Features
 
-- **`UPGRADER_ROLE`**: Allows contract upgrades.
-- **`PROPOSER_ROLE`**: Grants permission to propose governance actions.
-- **`CANCELLER_ROLE`**: Grants permission to cancel proposals.
+- **Custom Proposer Modes:** Allows the governance to define who can create proposals based on roles and/or voting power.
+- **Incentive Integration:** Optionally records votes in an incentive vault (`IREGIncentiveVault`) to reward voter participation.
+- **Access Control:** Utilizes role-based access control to manage permissions for proposing, upgrading, and cancelling proposals.
+- **Upgradeable Contract:** Implements UUPS (Universal Upgradeable Proxy Standard) pattern for contract upgradeability.
 
-### Storage Variables
+## Roles and Permissions
 
-- **`_proposerMode`**: Defines the mode that restricts how proposals can be made (based on role, voting power, or both).
-- **`_incentiveEnabled`**: A boolean indicating if the incentive mechanism is enabled.
-- **`_regIncentiveVault`**: A reference to the `IREGIncentiveVault` contract, which is used for recording votes and distributing incentives.
+- **DEFAULT_ADMIN_ROLE:** Has full control over the contract, including granting and revoking other roles.
+- **UPGRADER_ROLE:** Authorized to upgrade the contract's implementation.
+- **PROPOSER_ROLE:** Granted to addresses allowed to create proposals when certain proposer modes are active.
+- **CANCELLER_ROLE:** Granted to addresses that can cancel proposals.
 
-### Key Functions
-
-#### 1. `initialize`
+## Initialization
 
 ```solidity
 function initialize(
     IVotes _token,
     TimelockControllerUpgradeable _timelock,
     address defaultAdmin
-) public initializer;
+) public initializer
 ```
 
-**Purpose**: Initializes the contract with the governance token (`_token`), the timelock controller (`_timelock`), and sets up the default admin.
+- **Description:** Initializes the contract with the necessary parameters and roles.
+- **Parameters:**
+  - `_token`: The governance token implementing the `IVotes` interface.
+  - `_timelock`: The address of the timelock controller contract.
+  - `defaultAdmin`: The address that will have the `DEFAULT_ADMIN_ROLE` and `UPGRADER_ROLE`.
+- **Initial Settings:**
+  - **Voting Delay:** 1 day.
+  - **Voting Period:** 7 days.
+  - **Proposal Threshold:** 100 tokens (assuming 18 decimals).
+  - **Quorum Fraction:** 5% of the total token supply.
 
-#### 2. `_authorizeUpgrade`
+## Proposer Modes
+
+The contract introduces a `ProposerMode` enumeration to define who is allowed to create proposals:
+
+- **Modes:**
+  - `ProposerWithRole`: Only addresses with the `PROPOSER_ROLE` can propose.
+  - `ProposerWithVotingPower`: Only addresses with voting power above the proposal threshold can propose.
+  - `ProposerWithRoleAndVotingPower`: Only addresses with both the `PROPOSER_ROLE` and sufficient voting power can propose.
+  - `ProposerWithRoleOrVotingPower`: Addresses with either the `PROPOSER_ROLE` or sufficient voting power can propose.
+
+## Functions
+
+### Administrative Functions
+
+#### Set Proposer Mode
 
 ```solidity
-function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE);
+function setProposerMode(ProposerMode proposerMode) external override onlyGovernance
 ```
 
-**Purpose**: Restricts contract upgrades to only addresses with the `UPGRADER_ROLE`.
+- **Description:** Sets the proposer mode to control who can create proposals.
+- **Access Control:** Can only be called through a successful governance proposal (`onlyGovernance`).
 
-#### 3. `setProposerMode`
+#### Set Incentive Enabled
 
 ```solidity
-function setProposerMode(ProposerMode proposerMode) external override onlyGovernance;
+function setIncentiveEnabled(bool status) external override onlyGovernance
 ```
 
-**Purpose**: Allows governance to set the mode that controls who can propose governance actions (e.g., based on roles, voting power, or both).
+- **Description:** Enables or disables the recording of votes in the incentive vault.
+- **Access Control:** Can only be called through a successful governance proposal.
 
-#### 4. `setIncentiveEnabled`
+#### Set Incentive Vault
 
 ```solidity
-function setIncentiveEnabled(bool status) external override onlyGovernance;
+function setRegIncentiveVault(IREGIncentiveVault regIncentiveVault) external override onlyGovernance
 ```
 
-**Purpose**: Enables or disables the incentive system, which rewards voters for participating.
+- **Description:** Sets the address of the incentive vault contract.
+- **Access Control:** Can only be called through a successful governance proposal.
 
-#### 5. `setRegIncentiveVault`
-
-```solidity
-function setRegIncentiveVault(IREGIncentiveVault regIncentiveVault) external override onlyGovernance;
-```
-
-**Purpose**: Sets the `IREGIncentiveVault` contract, which is responsible for recording votes and managing incentives.
-
-#### 6. `cancelByAdmin`
+#### Cancel by Admin
 
 ```solidity
 function cancelByAdmin(
@@ -83,12 +103,41 @@ function cancelByAdmin(
     uint256[] memory values,
     bytes[] memory calldatas,
     bytes32 descriptionHash
-) external override onlyRole(CANCELLER_ROLE) returns (uint256);
+) external override onlyRole(CANCELLER_ROLE) returns (uint256)
 ```
 
-**Purpose**: Allows an address with the `CANCELLER_ROLE` to cancel a proposal before execution.
+- **Description:** Allows an address with the `CANCELLER_ROLE` to cancel a proposal.
+- **Access Control:** Restricted to addresses with the `CANCELLER_ROLE`.
 
-#### 7. `propose`
+### Getter Functions
+
+#### Get Proposer Mode
+
+```solidity
+function getProposerMode() external view override returns (ProposerMode)
+```
+
+- **Description:** Returns the current proposer mode.
+
+#### Get Incentive Enabled Status
+
+```solidity
+function getIncentiveEnabled() external view override returns (bool)
+```
+
+- **Description:** Indicates whether the incentive recording is enabled.
+
+#### Get Incentive Vault Address
+
+```solidity
+function getRegIncentiveVault() external view override returns (IREGIncentiveVault)
+```
+
+- **Description:** Returns the address of the incentive vault contract.
+
+### Proposal Functions
+
+#### Propose
 
 ```solidity
 function propose(
@@ -96,12 +145,19 @@ function propose(
     uint256[] memory values,
     bytes[] memory calldatas,
     string memory description
-) public override returns (uint256);
+) public override returns (uint256)
 ```
 
-**Purpose**: Allows the proposer to create a new proposal, provided they meet the requirements set by the current proposer mode. It checks if the proposer has the required votes or roles (or both) to submit the proposal.
+- **Description:** Creates a new proposal after verifying that the proposer meets the requirements based on the current proposer mode.
+- **Custom Logic:**
+  - **Role and Voting Power Checks:** Verifies if the proposer has the necessary role and/or voting power.
+  - **Description Hash Event:** Emits an additional event `ProposalCreatedDescriptionHash` with the hash of the proposal description for easier tracking.
+- **Reverts:**
+  - If the proposer does not meet the requirements of the current proposer mode.
 
-#### 8. `_castVote`
+### Voting Functions
+
+#### \_castVote (Internal)
 
 ```solidity
 function _castVote(
@@ -110,82 +166,70 @@ function _castVote(
     uint8 support,
     string memory reason,
     bytes memory params
-) internal override returns (uint256);
+) internal override returns (uint256)
 ```
 
-**Purpose**: Casts a vote on a proposal. If incentives are enabled, it records the vote in the incentive vault before casting the vote.
+- **Description:** Records a vote for a proposal. If incentive recording is enabled, it also records the vote in the incentive vault.
+- **Custom Logic:**
+  - Checks if `_incentiveEnabled` is `true`.
+  - Calls `_regIncentiveVault.recordVote(account, proposalId)` to record the vote.
 
-#### 9. `votingDelay` / `votingPeriod`
+### Upgrade Function
+
+#### \_authorizeUpgrade (Internal)
 
 ```solidity
-function votingDelay() public view override(GovernorUpgradeable, GovernorSettingsUpgradeable) returns (uint256);
-function votingPeriod() public view override(GovernorUpgradeable, GovernorSettingsUpgradeable) returns (uint256);
+function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE)
 ```
 
-**Purpose**: Retrieves the current voting delay and voting period settings.
+- **Description:** Authorizes the contract upgrade to a new implementation.
+- **Access Control:** Restricted to addresses with the `UPGRADER_ROLE`.
 
-#### 10. `quorum`
+## Access Control
 
-```solidity
-function quorum(uint256 blockNumber) public view override(GovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable) returns (uint256);
-```
+- **Roles:**
 
-**Purpose**: Returns the quorum required for a proposal to pass, which is calculated as a fraction of the total token supply.
+  - `DEFAULT_ADMIN_ROLE`: Manages other roles and can grant or revoke them.
+  - `UPGRADER_ROLE`: Authorized to perform contract upgrades.
+  - `PROPOSER_ROLE`: Authorized to create proposals under certain proposer modes.
+  - `CANCELLER_ROLE`: Authorized to cancel proposals.
 
-#### 11. `state`
+- **Role Assignment:**
+  - Roles are assigned during initialization to the `defaultAdmin` address.
+  - Additional role management can be performed by the `DEFAULT_ADMIN_ROLE`.
 
-```solidity
-function state(uint256 proposalId) public view override(GovernorUpgradeable, GovernorTimelockControlUpgradeable) returns (ProposalState);
-```
+## Events
 
-**Purpose**: Returns the current state of a proposal (e.g., Pending, Active, Canceled, Succeeded, etc.).
+- **SetProposerMode(ProposerMode proposerMode):** Emitted when the proposer mode is changed.
+- **SetIncentiveEnabled(bool status):** Emitted when the incentive recording status is changed.
+- **SetRegIncentiveVault(IREGIncentiveVault regIncentiveVault):** Emitted when the incentive vault address is set.
+- **ProposalCreatedDescriptionHash(bytes32 descriptionHash):** Emitted with the hash of the proposal description when a new proposal is created.
 
-#### 12. `_queueOperations` / `_executeOperations`
+## Errors Handling
 
-```solidity
-function _queueOperations(
-    uint256 proposalId,
-    address[] memory targets,
-    uint256[] memory values,
-    bytes[] memory calldatas,
-    bytes32 descriptionHash
-) internal override(GovernorUpgradeable, GovernorTimelockControlUpgradeable) returns (uint48);
+- **GovernorRestrictedProposer(address proposer):** Reverted when a proposer is restricted from creating a proposal due to invalid description content.
+- **InvalidProposerWithRole():** Reverted when the proposer lacks the required `PROPOSER_ROLE`.
+- **InvalidProposerWithVotingPower():** Reverted when the proposer lacks sufficient voting power.
+- **InvalidProposerWithRoleAndVotingPower():** Reverted when the proposer lacks both the required role and sufficient voting power.
+- **InvalidProposerWithRoleOrVotingPower():** Reverted when the proposer lacks both the required role and sufficient voting power, in a mode that requires either.
+- **InvalidProposerMode():** Reverted when an invalid proposer mode is set.
 
-function _executeOperations(
-    uint256 proposalId,
-    address[] memory targets,
-    uint256[] memory values,
-    bytes[] memory calldatas,
-    bytes32 descriptionHash
-) internal override(GovernorUpgradeable, GovernorTimelockControlUpgradeable);
-```
+## Integration with Incentive Vault
 
-**Purpose**: Queues and executes the operations for a proposal after it passes, ensuring that they are executed after the required timelock delay.
+When the incentive feature is enabled, the contract interacts with an `IREGIncentiveVault` to record votes, which may be used to distribute incentives to active participants.
 
-### Proposal Modes
+- **Enabling Incentives:**
 
-The `REGGovernor` contract supports multiple proposer modes:
+  - Call `setIncentiveEnabled(true)` via a governance proposal.
+  - Set the incentive vault address using `setRegIncentiveVault`.
 
-- **`ProposerWithRole`**: Only users with the `PROPOSER_ROLE` can create proposals.
-- **`ProposerWithVotingPower`**: Only users with a minimum voting power can create proposals.
-- **`ProposerWithRoleAndVotingPower`**: Users need both the `PROPOSER_ROLE` and the required voting power to propose.
-- **`ProposerWithRoleOrVotingPower`**: Users need either the `PROPOSER_ROLE` or the required voting power to propose.
+- **Recording Votes:**
+  - Upon casting a vote, if incentives are enabled, the contract records the vote in the incentive vault.
 
-### Events
+## Conclusion
 
-- **`SetProposerMode(ProposerMode mode)`**: Emitted when the proposer mode is updated.
-- **`SetIncentiveEnabled(bool status)`**: Emitted when the incentive system is enabled or disabled.
-- **`SetRegIncentiveVault(IREGIncentiveVault vault)`**: Emitted when the incentive vault address is set.
-- **`ProposalCreatedDescriptionHash(bytes32 descriptionHash)`**: Emitted to store the hash of the proposal description, making it easier to track proposals by their description.
+The `REGGovernor` contract extends OpenZeppelin's Governor contracts to provide a robust governance system with customizable proposer requirements, incentive integration, and strict access control. By leveraging OpenZeppelin's upgradeable patterns and implementing additional features, it offers flexibility and security for managing decentralized governance processes.
 
-### Error Handling
+---
 
-- **`InvalidProposerWithRole`**: Thrown when a user without the `PROPOSER_ROLE` tries to propose in a mode that requires it.
-- **`InvalidProposerWithVotingPower`**: Thrown when a user without the required voting power tries to propose in a mode that requires it.
-- **`InvalidProposerWithRoleAndVotingPower`**: Thrown when a user doesn't meet both the role and voting power requirements in a mode that requires both.
-- **`InvalidProposerWithRoleOrVotingPower`**: Thrown when a user has neither the role nor the voting power to propose in a mode that requires either.
-- **`InvalidProposerMode`**: Thrown when an invalid proposer mode is encountered.
-
-### Conclusion
-
-The `REGGovernor` contract is a highly flexible and upgradable governance contract. It integrates with voting tokens, timelock mechanisms, and incentive systems, making it a powerful tool for decentralized governance in the RealToken ecosystem. The ability to customize who can propose, based on roles and voting power, provides an additional layer of control for governance participants.
+**Note to Users:** To interact with this contract, ensure that you understand the current proposer mode and your role within the governance system. When creating proposals or voting, be aware of any incentives that may be active and how they may affect your participation.
