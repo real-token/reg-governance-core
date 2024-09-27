@@ -225,6 +225,11 @@ When the incentive feature is enabled, the contract interacts with an `IREGIncen
 
 - **Recording Votes:**
   - Upon casting a vote, if incentives are enabled, the contract records the vote in the incentive vault.
+  - When the vote is recorded for the incentive periode, there is a RecordVote event in the transaction, else there is a RecordVoteNotActive event.
+  - Only votes during an incentive lock period are counted for rewards as in the diagram below.
+
+![Alt text](../assets/incentive-vote-count.png "incentive-vote-count")
+Image: Diagram for recording votes between REGGovernor and REGIncentiveVault contracts
 
 ## Conclusion
 
