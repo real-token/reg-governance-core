@@ -1,5 +1,7 @@
 node_modules
 .env
+.env.gnosis
+.env.sepolia
 
 # Hardhat files
 /cache

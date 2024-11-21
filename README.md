@@ -101,9 +101,9 @@
 
 <!-- AUDIT -->
 
-## Audit
+## Static Analysis
 
-Run Slither check:
+Install Slither and run Slither check:
 
 ```
 slither contracts/REGGovernor.sol --solc-remaps '@openzeppelin=node_modules/@openzeppelin'

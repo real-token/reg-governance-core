@@ -8,6 +8,8 @@
     "test": "npx hardhat test",
     "coverage": "npx hardhat coverage",
     "size": "npm run compile && npx hardhat size-contracts",
+    "fetch": "ts-node utils/fetch-voters.ts",
+    "register": "ts-node utils/register-voters.ts",
     "deployFrame:voting:sepolia": "npx hardhat run scripts/deploy_reg_voting_power_frame.ts --network sepolia",
     "deployFrame:timelock:sepolia": "npx hardhat run scripts/deploy_reg_treasury_dao_frame.ts --network sepolia",
     "deployFrame:governor:sepolia": "npx hardhat run scripts/deploy_reg_governor_frame.ts --network sepolia",
