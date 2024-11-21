@@ -250,6 +250,51 @@ contract REGIncentiveVault is
         }
     }
 
+    function recordVoteBatchByAdmin(
+        address[] calldata users,
+        uint256 proposalId
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint256 currentEpochCache = _currentEpoch;
+        EpochState storage epochState = _epochStates[currentEpochCache];
+
+        // Check if the timestamp is within the lock period
+        // Do not use revert to avoid reverting the whole castVote transaction
+        if (
+            block.timestamp > epochState.subscriptionEnd &&
+            block.timestamp <= epochState.lockPeriodEnd
+        ) {
+            uint256 length = users.length;
+            epochState.totalVotes += length;
+
+            address user;
+            uint256 currentDeposit;
+
+            for (uint256 i; i < length; ) {
+                user = users[i];
+                // Update UserEpochState
+                UserEpochState storage userState = _userEpochStates[user][
+                    currentEpochCache
+                ];
+                // Update depositAmount in UserEpochState if it has changed and update voteAmount
+                currentDeposit = _userGlobalStates[user].currentDeposit;
+                if (userState.depositAmount != currentDeposit) {
+                    userState.depositAmount = currentDeposit;
+                }
+
+                userState.voteAmount += 1;
+
+                // Update EpochState
+                epochState.totalWeights += currentDeposit;
+
+                emit RecordVote(user, proposalId, currentEpochCache);
+
+                unchecked {
+                    ++i;
+                }
+            }
+        }
+    }
+
     /// @inheritdoc IREGIncentiveVault
     function calculateBonus(
         address user

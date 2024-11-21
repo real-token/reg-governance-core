@@ -38,6 +38,8 @@
     "hardhat-deploy": "^0.11.25"
   },
   "dependencies": {
+    "graphql": "^16.9.0",
+    "graphql-request": "5.1.0",
     "@inquirer/prompts": "^5.0.2"
   }
 }

@@ -15,6 +15,10 @@ import {
 } from "../typechain-types";
 
 describe("REGIncentiveVault contract", function () {
+  // Add a random proposal id
+  const PROPOSAL_ID =
+    "5712071342500793720693671896349815881663492088758593138080835169243854863342";
+
   async function deployGovernanceFixture() {
     let regGovernor: REGGovernor;
     let regVotingPowerRegistry: REGVotingPowerRegistry;
@@ -698,6 +702,160 @@ describe("REGIncentiveVault contract", function () {
       regIncentiveVault,
       "ClaimBonus"
     );
+  });
+
+  it("should revert on recordVoteBatchByAdmin when called by non-admin", async function () {
+    const { regIncentiveVault, deployer, voters } = await loadFixture(
+      deployGovernanceFixture
+    );
+
+    const users = [voters[0].address, voters[1].address, voters[2].address];
+
+    await expect(
+      regIncentiveVault
+        .connect(deployer)
+        .recordVoteBatchByAdmin(users, PROPOSAL_ID)
+    ).to.be.revertedWithCustomError(
+      regIncentiveVault,
+      "AccessControlUnauthorizedAccount"
+    );
+  });
+
+  it("should recordVoteBatchByAdmin when called by admin", async function () {
+    const {
+      regIncentiveVault,
+      regTokenMock,
+      usdcTokenMock,
+      admin,
+      voters,
+      USDC_BONUS,
+      VOTER0_TOKENS,
+      VOTER1_TOKENS,
+      VOTER2_TOKENS,
+    } = await loadFixture(deployGovernanceFixture);
+
+    // Set up the epoch
+    const subscriptionStart = (await time.latest()) + 60 * 60 * 24 * 1; // 1 days;
+    const subscriptionEnd = subscriptionStart + 60 * 60 * 24 * 2; // 1 days
+    const lockPeriodEnd = subscriptionEnd + 60 * 60 * 24 * 7; // 7 days
+
+    await expect(
+      regIncentiveVault
+        .connect(admin)
+        .setNewEpoch(
+          subscriptionStart,
+          subscriptionEnd,
+          lockPeriodEnd,
+          usdcTokenMock.address,
+          USDC_BONUS
+        )
+    )
+      .to.emit(regIncentiveVault, "SetNewEpoch")
+      .withArgs(
+        subscriptionStart,
+        subscriptionEnd,
+        lockPeriodEnd,
+        usdcTokenMock.address,
+        USDC_BONUS,
+        1
+      );
+
+    // Mint token to voters
+    await regTokenMock.connect(admin).mint(voters[0].address, VOTER0_TOKENS);
+    await regTokenMock.connect(admin).mint(voters[1].address, VOTER1_TOKENS);
+    await regTokenMock.connect(admin).mint(voters[2].address, VOTER2_TOKENS);
+
+    // Approve
+    await regTokenMock
+      .connect(voters[0])
+      .approve(regIncentiveVault.address, VOTER0_TOKENS);
+    await regTokenMock
+      .connect(voters[1])
+      .approve(regIncentiveVault.address, VOTER1_TOKENS);
+    await regTokenMock
+      .connect(voters[2])
+      .approve(regIncentiveVault.address, VOTER2_TOKENS);
+
+    // Increase time to subscriptionStart
+    await time.increase(60 * 60 * 24 * 1); // 1 days
+
+    // Deposit
+    await expect(regIncentiveVault.connect(voters[0]).deposit(VOTER0_TOKENS))
+      .to.emit(regIncentiveVault, "Deposit")
+      .withArgs(voters[0].address, VOTER0_TOKENS, 1);
+    await expect(regIncentiveVault.connect(voters[1]).deposit(VOTER1_TOKENS))
+      .to.emit(regIncentiveVault, "Deposit")
+      .withArgs(voters[1].address, VOTER1_TOKENS, 1);
+    await expect(regIncentiveVault.connect(voters[2]).deposit(VOTER2_TOKENS))
+      .to.emit(regIncentiveVault, "Deposit")
+      .withArgs(voters[2].address, VOTER2_TOKENS, 1);
+
+    console.log(
+      "getUserEpochState 0 before lock: ",
+      await regIncentiveVault.getUserEpochState(voters[0].address, 1)
+    );
+    console.log(
+      "getUserEpochState 1 before lock: ",
+      await regIncentiveVault.getUserEpochState(voters[1].address, 1)
+    );
+    console.log(
+      "getUserEpochState 2 before lock: ",
+      await regIncentiveVault.getUserEpochState(voters[2].address, 1)
+    );
+
+    // Increase time to subscriptionEnd
+    await time.increase(60 * 60 * 24 * 2); // 2 days
+
+    const users = [voters[0].address, voters[1].address, voters[2].address];
+
+    await expect(
+      regIncentiveVault
+        .connect(admin)
+        .recordVoteBatchByAdmin(users, PROPOSAL_ID)
+    ).to.emit(regIncentiveVault, "RecordVote");
+
+    console.log(
+      "getUserEpochState 0 after lock: ",
+      await regIncentiveVault.getUserEpochState(voters[0].address, 1)
+    );
+    console.log(
+      "getUserEpochState 1 after lock: ",
+      await regIncentiveVault.getUserEpochState(voters[1].address, 1)
+    );
+    console.log(
+      "getUserEpochState 2 after lock: ",
+      await regIncentiveVault.getUserEpochState(voters[2].address, 1)
+    );
+
+    // Check userEpochState
+    expect(
+      await regIncentiveVault.getUserEpochState(voters[0].address, 1)
+    ).to.deep.equal([VOTER0_TOKENS, 1, false]);
+    expect(
+      await regIncentiveVault.getUserEpochState(voters[1].address, 1)
+    ).to.deep.equal([VOTER1_TOKENS, 1, false]);
+    expect(
+      await regIncentiveVault.getUserEpochState(voters[2].address, 1)
+    ).to.deep.equal([VOTER2_TOKENS, 1, false]);
+
+    // uint256 subscriptionStart;
+    // uint256 subscriptionEnd;
+    // uint256 lockPeriodEnd;
+    // address bonusToken;
+    // uint256 totalBonus;
+    // uint256 totalVotes;
+    // uint256 totalWeights;
+
+    // Check epochState
+    expect(await regIncentiveVault.getEpochState(1)).to.deep.equal([
+      subscriptionStart,
+      subscriptionEnd,
+      lockPeriodEnd,
+      usdcTokenMock.address,
+      USDC_BONUS,
+      3,
+      VOTER0_TOKENS.add(VOTER1_TOKENS).add(VOTER2_TOKENS),
+    ]);
   });
 
   it("should revert on upgrade by non-upgrader", async function () {
