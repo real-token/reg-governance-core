@@ -1,0 +1,28 @@
+Governance configuration check list:
+
+## REGGovernor:
+
+- DEFAULT_ADMIN_ROLE
+- UPGRADER_ROLE
+- PROPOSER_ROLE
+- CANCELLER_ROLE
+
+## REGTreasuryDAO:
+
+- DEFAULT_ADMIN_ROLE
+- UPGRADER_ROLE
+- PROPOSER_ROLE: REGGovernor
+- EXECUTOR_ROLE: REGGovernor
+- CANCELLER_ROLE: REGGovernor
+
+## REGIncentiveVault:
+
+- DEFAULT_ADMIN_ROLE
+- UPGRADER_ROLE
+- PAUSER_ROLE
+
+## REGVotingPowerRegistry:
+
+- DEFAULT_ADMIN_ROLE
+- UPGRADER_ROLE
+- REGISTER_ROLE
